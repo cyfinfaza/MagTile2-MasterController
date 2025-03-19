@@ -61,11 +61,14 @@ uint8_t FAULT_12;
 uint8_t BUTTON;
 uint8_t BOOT0_SENSE;
 
+// button last state
+uint8_t BUTTON_LAST = 0;
+
 // make global variables for all digital outputs
 uint8_t HV_RELAY = 0;
-uint8_t SHDN_12 = 0;
-uint8_t IND_R = 0;
-uint8_t IND_G = 0;
+uint8_t SHDN_12 = 1;
+uint8_t IND_R = 1;
+uint8_t IND_G = 1;
 uint8_t IND_B = 0;
 
 // make global variables for all analog inputs
@@ -190,6 +193,37 @@ int main(void)
 	voltage_out_12 = V_SENSE_12 * 0.0080566406;
 	voltage_out_5 = V_SENSE_5 * 0.0014648438;
 
+	// calculate next state
+
+	if (BOOT0_SENSE && !BUTTON_LAST) {
+		HV_RELAY = !HV_RELAY;
+	}
+	BUTTON_LAST = BOOT0_SENSE;
+
+	if (voltage_out_5 > 4.8 || voltage_out_12 > 10.5) {
+		IND_R = 1;
+		IND_G = 0;
+		IND_B = 0;
+		if (voltage_out_5 > 4.8 && voltage_out_12 > 10.5) {
+			IND_R = 0;
+			IND_G = 1;
+			IND_B = 0;
+		} else {
+			HV_RELAY = 0;
+		}
+	} else {
+		IND_R = 1;
+		IND_G = 1;
+		IND_B = 0;
+		HV_RELAY = 0;
+	}
+
+	if (HV_RELAY) {
+		IND_R = 0;
+		IND_G = 0;
+		IND_B = 1;
+	}
+
   }
   /* USER CODE END 3 */
 }
@@ -205,26 +239,24 @@ void SystemClock_Config(void)
 
   /** Configure the main internal regulator output voltage
   */
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48|RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSIDiv = RCC_HSI_DIV2;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLL1_SOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLL1_SOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 8;
   RCC_OscInitStruct.PLL.PLLN = 100;
   RCC_OscInitStruct.PLL.PLLP = 2;
   RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 2;
-  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1_VCIRANGE_2;
+  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1_VCIRANGE_1;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1_VCORANGE_WIDE;
   RCC_OscInitStruct.PLL.PLLFRACN = 0;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -243,7 +275,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
   {
     Error_Handler();
   }
@@ -264,13 +296,13 @@ void PeriphCommonClock_Config(void)
   /** Initializes the peripherals clock
   */
   PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_ADCDAC|RCC_PERIPHCLK_FDCAN;
-  PeriphClkInitStruct.PLL2.PLL2Source = RCC_PLL2_SOURCE_HSI;
+  PeriphClkInitStruct.PLL2.PLL2Source = RCC_PLL2_SOURCE_HSE;
   PeriphClkInitStruct.PLL2.PLL2M = 8;
-  PeriphClkInitStruct.PLL2.PLL2N = 50;
+  PeriphClkInitStruct.PLL2.PLL2N = 100;
   PeriphClkInitStruct.PLL2.PLL2P = 2;
   PeriphClkInitStruct.PLL2.PLL2Q = 2;
   PeriphClkInitStruct.PLL2.PLL2R = 8;
-  PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2_VCIRANGE_2;
+  PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2_VCIRANGE_1;
   PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2_VCORANGE_WIDE;
   PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
   PeriphClkInitStruct.PLL2.PLL2ClockOut = RCC_PLL2_DIVQ|RCC_PLL2_DIVR;
@@ -474,7 +506,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x30C0EDFF;
+  hi2c1.Init.Timing = 0x10C0ECFF;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -706,11 +738,12 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, HV_RELAY_Pin|SHDN_12_Pin|IND_R_Pin|IND_G_Pin
+  HAL_GPIO_WritePin(GPIOA, HV_RELAY_Pin|SHDN_12_Pin|IND_G_Pin|IND_R_Pin
                           |IND_B_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : OV_SENSE_HV_Pin OC_SENSE_HV_Pin FAULT_12_Pin */
@@ -719,9 +752,9 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : HV_RELAY_Pin SHDN_12_Pin IND_R_Pin IND_G_Pin
+  /*Configure GPIO pins : HV_RELAY_Pin SHDN_12_Pin IND_G_Pin IND_R_Pin
                            IND_B_Pin */
-  GPIO_InitStruct.Pin = HV_RELAY_Pin|SHDN_12_Pin|IND_R_Pin|IND_G_Pin
+  GPIO_InitStruct.Pin = HV_RELAY_Pin|SHDN_12_Pin|IND_G_Pin|IND_R_Pin
                           |IND_B_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
