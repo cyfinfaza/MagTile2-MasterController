@@ -80,6 +80,7 @@ uint16_t V_SENSE_5;
 uint16_t I_SENSE_5;
 
 // measurements
+float voltage_out_HV;
 float voltage_out_12;
 float voltage_out_5;
 
@@ -192,6 +193,7 @@ int main(void)
 	// calculate measurements
 	voltage_out_12 = V_SENSE_12 * 0.0080566406;
 	voltage_out_5 = V_SENSE_5 * 0.0014648438;
+	voltage_out_HV = V_SENSE_HV * 0.0194091797;
 
 	// calculate next state
 
@@ -199,6 +201,10 @@ int main(void)
 		HV_RELAY = !HV_RELAY;
 	}
 	BUTTON_LAST = BOOT0_SENSE;
+
+	if (!OV_SENSE_HV || !OC_SENSE_HV) {
+		HV_RELAY = 0;
+	}
 
 	if (voltage_out_5 > 4.8 || voltage_out_12 > 10.5) {
 		IND_R = 1;
@@ -209,7 +215,7 @@ int main(void)
 			IND_G = 1;
 			IND_B = 0;
 		} else {
-			HV_RELAY = 0;
+//			HV_RELAY = 0;
 		}
 	} else {
 		IND_R = 1;
