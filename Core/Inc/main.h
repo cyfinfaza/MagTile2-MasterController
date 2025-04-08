@@ -79,10 +79,10 @@ void Error_Handler(void);
 #define I_SENSE_5_GPIO_Port GPIOB
 #define I_SENSE_HV_Pin GPIO_PIN_1
 #define I_SENSE_HV_GPIO_Port GPIOB
-#define IND_G_Pin GPIO_PIN_8
-#define IND_G_GPIO_Port GPIOA
-#define IND_R_Pin GPIO_PIN_9
+#define IND_R_Pin GPIO_PIN_8
 #define IND_R_GPIO_Port GPIOA
+#define IND_G_Pin GPIO_PIN_9
+#define IND_G_GPIO_Port GPIOA
 #define IND_B_Pin GPIO_PIN_10
 #define IND_B_GPIO_Port GPIOA
 #define SWDIO_Pin GPIO_PIN_13

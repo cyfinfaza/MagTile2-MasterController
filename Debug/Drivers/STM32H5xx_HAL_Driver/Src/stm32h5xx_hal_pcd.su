@@ -1,6 +1,6 @@
-../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_pcd.h:596:26:PCD_GET_EP_RX_CNT	24	static
-../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_pcd.h:639:26:PCD_GET_EP_DBUF0_CNT	24	static
-../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_pcd.h:659:26:PCD_GET_EP_DBUF1_CNT	24	static
+../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_pcd.h:604:26:PCD_GET_EP_RX_CNT	24	static
+../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_pcd.h:647:26:PCD_GET_EP_DBUF0_CNT	24	static
+../Drivers/STM32H5xx_HAL_Driver/Inc/stm32h5xx_hal_pcd.h:667:26:PCD_GET_EP_DBUF1_CNT	24	static
 ../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:132:19:HAL_PCD_Init	32	static
 ../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:265:19:HAL_PCD_DeInit	16	static
 ../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:304:13:HAL_PCD_MspInit	16	static
@@ -34,6 +34,6 @@
 ../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:2241:19:HAL_PCD_ActivateRemoteWakeup	16	static
 ../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:2251:19:HAL_PCD_DeActivateRemoteWakeup	16	static
 ../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:2280:18:HAL_PCD_GetState	16	static
-../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:2540:26:PCD_EP_ISR_Handler	64	static
-../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:2819:17:HAL_PCD_EP_DB_Receive	48	static
-../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:2900:26:HAL_PCD_EP_DB_Transmit	64	static
+../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:2541:26:PCD_EP_ISR_Handler	80	static
+../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:2832:17:HAL_PCD_EP_DB_Receive	48	static
+../Drivers/STM32H5xx_HAL_Driver/Src/stm32h5xx_hal_pcd.c:2913:26:HAL_PCD_EP_DB_Transmit	72	static

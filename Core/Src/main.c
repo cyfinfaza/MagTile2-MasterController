@@ -46,8 +46,6 @@ FDCAN_HandleTypeDef hfdcan1;
 
 I2C_HandleTypeDef hi2c1;
 
-TIM_HandleTypeDef htim1;
-
 UART_HandleTypeDef huart1;
 
 PCD_HandleTypeDef hpcd_USB_DRD_FS;
@@ -94,7 +92,6 @@ static void MX_ADC1_Init(void);
 static void MX_FDCAN1_Init(void);
 static void MX_FLASH_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_TIM1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USB_PCD_Init(void);
 static void MX_ICACHE_Init(void);
@@ -143,7 +140,6 @@ int main(void)
   MX_FDCAN1_Init();
   MX_FLASH_Init();
   MX_I2C1_Init();
-  MX_TIM1_Init();
   MX_USART1_UART_Init();
   MX_USB_PCD_Init();
   MX_ICACHE_Init();
@@ -171,9 +167,9 @@ int main(void)
 	// write all digital outputs
 	HAL_GPIO_WritePin(HV_RELAY_GPIO_Port, HV_RELAY_Pin, HV_RELAY);
 	HAL_GPIO_WritePin(SHDN_12_GPIO_Port, SHDN_12_Pin, SHDN_12);
-	HAL_GPIO_WritePin(IND_R_GPIO_Port, IND_R_Pin, IND_R);
-	HAL_GPIO_WritePin(IND_G_GPIO_Port, IND_G_Pin, IND_G);
-	HAL_GPIO_WritePin(IND_B_GPIO_Port, IND_B_Pin, IND_B);
+	HAL_GPIO_WritePin(IND_R_GPIO_Port, IND_R_Pin, !IND_R);
+	HAL_GPIO_WritePin(IND_G_GPIO_Port, IND_G_Pin, !IND_G);
+	HAL_GPIO_WritePin(IND_B_GPIO_Port, IND_B_Pin, !IND_B);
 
 	// read all analog inputs
 	HAL_ADC_Start(&hadc1);
@@ -197,10 +193,10 @@ int main(void)
 
 	// calculate next state
 
-	if (BOOT0_SENSE && !BUTTON_LAST) {
+	if (BUTTON && !BUTTON_LAST) {
 		HV_RELAY = !HV_RELAY;
 	}
-	BUTTON_LAST = BOOT0_SENSE;
+	BUTTON_LAST = BUTTON;
 
 	if (!OV_SENSE_HV || !OC_SENSE_HV) {
 		HV_RELAY = 0;
@@ -577,77 +573,6 @@ static void MX_ICACHE_Init(void)
 }
 
 /**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM1_Init(void)
-{
-
-  /* USER CODE BEGIN TIM1_Init 0 */
-
-  /* USER CODE END TIM1_Init 0 */
-
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
-  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
-
-  /* USER CODE BEGIN TIM1_Init 1 */
-
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 0;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 65535;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
-  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
-  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 0;
-  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
-  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-  sBreakDeadTimeConfig.BreakFilter = 0;
-  sBreakDeadTimeConfig.BreakAFMode = TIM_BREAK_AFMODE_INPUT;
-  sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
-  sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
-  sBreakDeadTimeConfig.Break2Filter = 0;
-  sBreakDeadTimeConfig.Break2AFMode = TIM_BREAK_AFMODE_INPUT;
-  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM1_Init 2 */
-
-  /* USER CODE END TIM1_Init 2 */
-
-}
-
-/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -739,8 +664,8 @@ static void MX_USB_PCD_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -749,7 +674,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, HV_RELAY_Pin|SHDN_12_Pin|IND_G_Pin|IND_R_Pin
+  HAL_GPIO_WritePin(GPIOA, HV_RELAY_Pin|SHDN_12_Pin|IND_R_Pin|IND_G_Pin
                           |IND_B_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : OV_SENSE_HV_Pin OC_SENSE_HV_Pin FAULT_12_Pin */
@@ -758,11 +683,16 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : HV_RELAY_Pin SHDN_12_Pin IND_G_Pin IND_R_Pin
-                           IND_B_Pin */
-  GPIO_InitStruct.Pin = HV_RELAY_Pin|SHDN_12_Pin|IND_G_Pin|IND_R_Pin
-                          |IND_B_Pin;
+  /*Configure GPIO pins : HV_RELAY_Pin SHDN_12_Pin */
+  GPIO_InitStruct.Pin = HV_RELAY_Pin|SHDN_12_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : IND_R_Pin IND_G_Pin IND_B_Pin */
+  GPIO_InitStruct.Pin = IND_R_Pin|IND_G_Pin|IND_B_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -773,8 +703,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
