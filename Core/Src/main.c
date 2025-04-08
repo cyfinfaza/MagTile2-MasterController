@@ -22,6 +22,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "tusb.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -145,6 +147,10 @@ int main(void)
   MX_ICACHE_Init();
   /* USER CODE BEGIN 2 */
 
+  // start USB
+  tusb_init();
+  uint32_t start = HAL_GetTick();
+
   // calibrate ADC
   HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
 
@@ -225,6 +231,20 @@ int main(void)
 		IND_G = 0;
 		IND_B = 1;
 	}
+
+	if (HAL_GetTick() - start > 1000)
+	  {
+		  start = HAL_GetTick();
+		  // send message over both interfaces
+		  tud_cdc_write_str("Hello CDC\r\n");
+		  tud_cdc_write_flush();
+		  tud_vendor_write_str("Hello Vendor\r\n");
+		  tud_vendor_write_flush();
+		  // toggle PA10
+		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_10);
+	  }
+
+	tud_task();
 
   }
   /* USER CODE END 3 */
