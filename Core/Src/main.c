@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2025 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2025 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 
 #include "tusb.h"
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -78,11 +79,18 @@ uint16_t V_SENSE_12;
 uint16_t I_SENSE_12;
 uint16_t V_SENSE_5;
 uint16_t I_SENSE_5;
+uint16_t VDDCORE;
+uint16_t INTERNAL_TEMP;
 
 // measurements
 float voltage_out_HV;
 float voltage_out_12;
 float voltage_out_5;
+
+float vddcore;
+float internal_temp;
+
+float test_vsense_5 = 0;
 
 /* USER CODE END PV */
 
@@ -104,6 +112,28 @@ static void MX_ICACHE_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+void send_telemetry(const char *format, void *value_ptr, char type) {
+
+	char buffer[128]; // Adjust buffer size as needed
+
+	// Handle different types using the type parameter
+	switch (type) {
+	case 'f': // float
+		sprintf(buffer, format, *(float*) value_ptr);
+		break;
+	case 'i': // int
+		sprintf(buffer, format, *(int*) value_ptr);
+		break;
+		// Add other types as needed
+	}
+
+	tud_cdc_write_str(buffer);
+	tud_vendor_write_str(buffer);
+	tud_cdc_write_flush();
+	tud_task();
+	tud_vendor_write_flush();
+	tud_task();
+}
 /* USER CODE END 0 */
 
 /**
@@ -147,106 +177,139 @@ int main(void)
   MX_ICACHE_Init();
   /* USER CODE BEGIN 2 */
 
-  // start USB
-  tusb_init();
-  uint32_t start = HAL_GetTick();
+	// start USB
+//	tusb_init();
+	uint32_t start = HAL_GetTick();
 
-  // calibrate ADC
-  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+	// calibrate ADC
+	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+
+	FDCAN_TxHeaderTypeDef TxHeader;
+	uint8_t TxData[8] = {0x55, 0xAA}; // example data
+	HAL_FDCAN_Start(&hfdcan1);
+
+	// Set up message header
+	  TxHeader.Identifier = 0x321;
+	  TxHeader.IdType = FDCAN_STANDARD_ID;
+	  TxHeader.TxFrameType = FDCAN_DATA_FRAME;
+	  TxHeader.DataLength = FDCAN_DLC_BYTES_2;
+	  TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+	  TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
+	  TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
+	  TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+	  TxHeader.MessageMarker = 0;
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	// read all digital inputs
-	OV_SENSE_HV = HAL_GPIO_ReadPin(OV_SENSE_HV_GPIO_Port, OV_SENSE_HV_Pin);
-	OC_SENSE_HV = HAL_GPIO_ReadPin(OC_SENSE_HV_GPIO_Port, OC_SENSE_HV_Pin);
-	FAULT_12 = HAL_GPIO_ReadPin(FAULT_12_GPIO_Port, FAULT_12_Pin);
-	BUTTON = HAL_GPIO_ReadPin(BUTTON_GPIO_Port, BUTTON_Pin);
-	BOOT0_SENSE = HAL_GPIO_ReadPin(BOOT0_SENSE_GPIO_Port, BOOT0_SENSE_Pin);
+		// read all digital inputs
+		OV_SENSE_HV = HAL_GPIO_ReadPin(OV_SENSE_HV_GPIO_Port, OV_SENSE_HV_Pin);
+		OC_SENSE_HV = HAL_GPIO_ReadPin(OC_SENSE_HV_GPIO_Port, OC_SENSE_HV_Pin);
+		FAULT_12 = HAL_GPIO_ReadPin(FAULT_12_GPIO_Port, FAULT_12_Pin);
+		BUTTON = HAL_GPIO_ReadPin(BUTTON_GPIO_Port, BUTTON_Pin);
+		BOOT0_SENSE = HAL_GPIO_ReadPin(BOOT0_SENSE_GPIO_Port, BOOT0_SENSE_Pin);
 
-	// write all digital outputs
-	HAL_GPIO_WritePin(HV_RELAY_GPIO_Port, HV_RELAY_Pin, HV_RELAY);
-	HAL_GPIO_WritePin(SHDN_12_GPIO_Port, SHDN_12_Pin, SHDN_12);
-	HAL_GPIO_WritePin(IND_R_GPIO_Port, IND_R_Pin, !IND_R);
-	HAL_GPIO_WritePin(IND_G_GPIO_Port, IND_G_Pin, !IND_G);
-	HAL_GPIO_WritePin(IND_B_GPIO_Port, IND_B_Pin, !IND_B);
+		// write all digital outputs
+		HAL_GPIO_WritePin(HV_RELAY_GPIO_Port, HV_RELAY_Pin, HV_RELAY);
+		HAL_GPIO_WritePin(SHDN_12_GPIO_Port, SHDN_12_Pin, SHDN_12);
+		HAL_GPIO_WritePin(IND_R_GPIO_Port, IND_R_Pin, !IND_R);
+		HAL_GPIO_WritePin(IND_G_GPIO_Port, IND_G_Pin, !IND_G);
+		HAL_GPIO_WritePin(IND_B_GPIO_Port, IND_B_Pin, !IND_B);
 
-	// read all analog inputs
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 100);
-	V_SENSE_HV = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 100);
-	V_SENSE_12 = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 100);
-	V_SENSE_5 = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 100);
-	I_SENSE_HV = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 100);
-	I_SENSE_12 = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 100);
-	I_SENSE_5 = HAL_ADC_GetValue(&hadc1);
+		// read all analog inputs
+		HAL_ADC_Start(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 100);
+		V_SENSE_HV = HAL_ADC_GetValue(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 100);
+		V_SENSE_12 = HAL_ADC_GetValue(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 100);
+		V_SENSE_5 = HAL_ADC_GetValue(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 100);
+		I_SENSE_HV = HAL_ADC_GetValue(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 100);
+		I_SENSE_12 = HAL_ADC_GetValue(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 100);
+		I_SENSE_5 = HAL_ADC_GetValue(&hadc1);
+//		HAL_ADC_PollForConversion(&hadc1, 100);
+//		VDDCORE = HAL_ADC_GetValue(&hadc1);
+//		HAL_ADC_PollForConversion(&hadc1, 100);
+//		INTERNAL_TEMP = HAL_ADC_GetValue(&hadc1);
 
-	// calculate measurements
-	voltage_out_12 = V_SENSE_12 * 0.0080566406;
-	voltage_out_5 = V_SENSE_5 * 0.0014648438;
-	voltage_out_HV = V_SENSE_HV * 0.0194091797;
+		// calculate measurements
+		voltage_out_12 = V_SENSE_12 * 0.0080566406;
+		voltage_out_5 = V_SENSE_5 * 0.0014648438;
+		voltage_out_HV = V_SENSE_HV * 0.0194091797;
 
-	// calculate next state
+//		vddcore = VDDCORE / 4095.0 * 3;
+//		internal_temp = (INTERNAL_TEMP * 3 / 4095.0 - 0.76) / 0.0025 + 25;
 
-	if (BUTTON && !BUTTON_LAST) {
-		HV_RELAY = !HV_RELAY;
-	}
-	BUTTON_LAST = BUTTON;
+		// calculate next state
 
-	if (!OV_SENSE_HV || !OC_SENSE_HV) {
-		HV_RELAY = 0;
-	}
+		if ((BUTTON || BOOT0_SENSE) && !BUTTON_LAST) {
+			HV_RELAY = !HV_RELAY;
+		}
+		BUTTON_LAST = BUTTON || BOOT0_SENSE;
 
-	if (voltage_out_5 > 4.8 || voltage_out_12 > 10.5) {
-		IND_R = 1;
-		IND_G = 0;
-		IND_B = 0;
-		if (voltage_out_5 > 4.8 && voltage_out_12 > 10.5) {
-			IND_R = 0;
+		if (!OV_SENSE_HV || !OC_SENSE_HV) {
+			HV_RELAY = 0;
+		}
+
+		if (voltage_out_5 > 4.8 || voltage_out_12 > 10.5) {
+			IND_R = 1;
+			IND_G = 0;
+			IND_B = 0;
+			if (voltage_out_5 > 4.8 && voltage_out_12 > 10.5) {
+				IND_R = 0;
+				IND_G = 1;
+				IND_B = 0;
+			} else {
+//			HV_RELAY = 0;
+			}
+		} else {
+			IND_R = 1;
 			IND_G = 1;
 			IND_B = 0;
-		} else {
-//			HV_RELAY = 0;
+			HV_RELAY = 0;
 		}
-	} else {
-		IND_R = 1;
-		IND_G = 1;
-		IND_B = 0;
-		HV_RELAY = 0;
+
+		if (HV_RELAY) {
+			IND_R = 0;
+			IND_G = 0;
+			IND_B = 1;
+		}
+
+		if (HAL_GetTick() - start > 500) {
+			start = HAL_GetTick();
+//			send_telemetry("master_telem voltage_out_5 %.3f\n", &voltage_out_5,'f');
+//			send_telemetry("master_telem voltage_out_12 %.3f\n", &voltage_out_12, 'f');
+//			send_telemetry("master_telem voltage_out_HV %.3f\n", &voltage_out_HV, 'f');
+//
+//			send_telemetry("master_telem current_out_5 %d\n", &I_SENSE_5, 'i');
+//			send_telemetry("master_telem current_out_12 %d\n", &I_SENSE_12, 'i');
+//			send_telemetry("master_telem current_out_HV %d\n", &I_SENSE_HV, 'i');
+//
+//			send_telemetry("master_telem oc_sense_HV %d\n", &OC_SENSE_HV, 'i');
+//			send_telemetry("master_telem ov_sense_HV %d\n", &OV_SENSE_HV, 'i');
+//			send_telemetry("master_telem fault_12 %d\n", &FAULT_12, 'i');
+//			send_telemetry("master_telem button %d\n", &BUTTON, 'i');
+//			send_telemetry("master_telem boot0_sense %d\n", &BOOT0_SENSE, 'i');
+//			send_telemetry("master_telem hv_relay %d\n", &HV_RELAY, 'i');
+//			HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData);
+			// test write to I2C
+//			HAL_I2C_Master_Transmit(&hi2c1, 0x50, TxData, 2, 100);
+
+			// test read register 0 to test_vsense_5 (size 4)
+			HAL_I2C_Mem_Read(&hi2c1, 0x50, 0, I2C_MEMADD_SIZE_8BIT, &test_vsense_5, 4, 100);
+		}
+
+//		tud_task();
+
 	}
-
-	if (HV_RELAY) {
-		IND_R = 0;
-		IND_G = 0;
-		IND_B = 1;
-	}
-
-	if (HAL_GetTick() - start > 1000)
-	  {
-		  start = HAL_GetTick();
-		  // send message over both interfaces
-		  tud_cdc_write_str("Hello CDC\r\n");
-		  tud_cdc_write_flush();
-		  tud_vendor_write_str("Hello Vendor\r\n");
-		  tud_vendor_write_flush();
-		  // toggle PA10
-		  HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_10);
-	  }
-
-	tud_task();
-
-  }
   /* USER CODE END 3 */
 }
 
@@ -261,7 +324,7 @@ void SystemClock_Config(void)
 
   /** Configure the main internal regulator output voltage
   */
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
 
   while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
 
@@ -274,7 +337,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLL1_SOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 100;
+  RCC_OscInitStruct.PLL.PLLN = 250;
   RCC_OscInitStruct.PLL.PLLP = 2;
   RCC_OscInitStruct.PLL.PLLQ = 2;
   RCC_OscInitStruct.PLL.PLLR = 2;
@@ -297,7 +360,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB3CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
   }
@@ -462,10 +525,10 @@ static void MX_FDCAN1_Init(void)
   hfdcan1.Init.AutoRetransmission = DISABLE;
   hfdcan1.Init.TransmitPause = DISABLE;
   hfdcan1.Init.ProtocolException = DISABLE;
-  hfdcan1.Init.NominalPrescaler = 16;
-  hfdcan1.Init.NominalSyncJumpWidth = 1;
-  hfdcan1.Init.NominalTimeSeg1 = 1;
-  hfdcan1.Init.NominalTimeSeg2 = 1;
+  hfdcan1.Init.NominalPrescaler = 10;
+  hfdcan1.Init.NominalSyncJumpWidth = 4;
+  hfdcan1.Init.NominalTimeSeg1 = 13;
+  hfdcan1.Init.NominalTimeSeg2 = 6;
   hfdcan1.Init.DataPrescaler = 1;
   hfdcan1.Init.DataSyncJumpWidth = 1;
   hfdcan1.Init.DataTimeSeg1 = 1;
@@ -528,7 +591,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x10C0ECFF;
+  hi2c1.Init.Timing = 0x60808CD3;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -738,11 +801,10 @@ static void MX_GPIO_Init(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 
