@@ -1,0 +1,64 @@
+/*
+ * adc.c
+ *
+ *  Created on: Apr 13, 2025
+ *      Author: cyfin
+ */
+
+
+#include "adc.h"
+#include "stm32h5xx_hal.h"
+
+uint16_t ADC_DMA_BUFFER[ADC_CHANNELS*2];
+
+// raw readings
+uint16_t V_SENSE_HV = 0;
+uint16_t I_SENSE_HV = 0;
+uint16_t V_SENSE_12 = 0;
+uint16_t I_SENSE_12 = 0;
+uint16_t V_SENSE_5 = 0;
+uint16_t I_SENSE_5 = 0;
+
+// calculated values
+float v_sense_hv = 0;
+float v_sense_12 = 0;
+float v_sense_5 = 0;
+float i_sense_hv = 0;
+float i_sense_12 = 0;
+float i_sense_5 = 0;
+
+void ADC_Init(ADC_HandleTypeDef* hadc) {
+	HAL_ADCEx_Calibration_Start(hadc, ADC_SINGLE_ENDED);
+	HAL_ADC_Start_DMA(hadc, (uint32_t*)ADC_DMA_BUFFER, 12);
+}
+
+void ADC_ProcessBuffer(uint16_t* buffer) {
+	// read the values from the ADC buffer
+	V_SENSE_HV = buffer[0];
+	V_SENSE_12 = buffer[1];
+	V_SENSE_5 = buffer[2];
+	I_SENSE_HV = buffer[3];
+	I_SENSE_12 = buffer[4];
+	I_SENSE_5 = buffer[5];
+
+	// calculate measurements
+	v_sense_hv = V_SENSE_HV * 0.0194091797;
+	v_sense_12 = V_SENSE_12 * 0.0080566406;
+	v_sense_5 = V_SENSE_5 * 0.0014648438;
+	i_sense_hv = I_SENSE_HV * 0.01;
+	i_sense_12 = I_SENSE_12 * 0.01;
+	i_sense_5 = I_SENSE_5 * 0.01;
+}
+
+void HAL_ADC_HalfConvCpltCallback(ADC_HandleTypeDef* hadc) {
+	if (hadc->Instance == ADC1) {
+		ADC_ProcessBuffer(&ADC_DMA_BUFFER[0]);
+	}
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+	if (hadc->Instance == ADC1) {
+		ADC_ProcessBuffer(&ADC_DMA_BUFFER[6]);
+	}
+}
+

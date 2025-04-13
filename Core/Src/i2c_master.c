@@ -46,16 +46,21 @@ I2C_ReqStatus I2C_ReadTileReg(uint8_t addr, uint8_t reg, void *data, uint16_t si
 	return req_status;
 }
 
-uint8_t I2C_ReadTile_Alive(uint8_t addr) {
-	uint8_t addr_compare;
-	I2C_ReqStatus status = I2C_ReadTileReg(addr, 0, &addr_compare, 1);
+uint8_t I2C_ReadTile_StatusOnly(uint8_t addr) {
+	MT2_Slave_Status stat_temp;
+	I2C_ReqStatus status = I2C_ReadTileReg(addr, 0, &stat_temp, 1);
+	if (status.device_present) {
+		// if the tile is present, store the status and also read fault
+		mt2_slave_data[addr].slave_status = stat_temp;
+		I2C_ReadTileReg(addr, 0x05, &mt2_slave_data[addr].slave_faults, 1);
+	}
 	mt2_slave_data[addr].slave_status.flags.alive = status.device_present;
 	return status.device_present;
 }
 
 void I2C_ReadTile_Full(uint8_t addr) {
 	// first check if the tile is alive, then if so read the data
-	if (I2C_ReadTile_Alive(addr)) {
+	if (I2C_ReadTile_StatusOnly(addr)) {
 		I2C_ReadTileReg(addr, 0x04, &mt2_slave_data[addr].slave_status, 1);
 		I2C_ReadTileReg(addr, 0x05, &mt2_slave_data[addr].slave_faults, 1);
 		I2C_ReadTileReg(addr, 0x06, &mt2_slave_data[addr].master_status, 1);
@@ -101,8 +106,28 @@ void I2C_ReadTile_Full(uint8_t addr) {
 	}
 }
 
-void I2C_ReadAllTiles(void) {
+void I2C_ReadAllTiles_Full(void) {
 	for (uint8_t i = 0; i < MAX_TILES; i++) {
 		I2C_ReadTile_Full(i);
 	}
 }
+
+void I2C_ReadAllTiles_StatusOnly(void) {
+	for (uint8_t i = 0; i < MAX_TILES; i++) {
+		I2C_ReadTile_StatusOnly(i);
+	}
+}
+
+uint8_t iterative_read_pos = 0;
+void I2C_IterativeReadAllTiles(void) {
+	for (uint8_t i = 0; i < MAX_TILES; i++) {
+		iterative_read_pos %= MAX_TILES;
+		if (mt2_slave_data[iterative_read_pos].slave_status.flags.alive) {
+			I2C_ReadTile_Full(iterative_read_pos);
+			iterative_read_pos++;
+			return;
+		}
+		iterative_read_pos++;
+	}
+}
+

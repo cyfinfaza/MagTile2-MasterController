@@ -25,6 +25,8 @@
 #include "tusb.h"
 #include <stdio.h>
 #include "i2c_master.h"
+#include "adc.h"
+#include "reporter.h"
 
 /* USER CODE END Includes */
 
@@ -45,8 +47,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
-
-FDCAN_HandleTypeDef hfdcan1;
+DMA_NodeTypeDef Node_GPDMA1_Channel0;
+DMA_QListTypeDef List_GPDMA1_Channel0;
+DMA_HandleTypeDef handle_GPDMA1_Channel0;
 
 I2C_HandleTypeDef hi2c1;
 
@@ -73,42 +76,24 @@ uint8_t IND_R = 1;
 uint8_t IND_G = 1;
 uint8_t IND_B = 0;
 
-// make global variables for all analog inputs
-uint16_t V_SENSE_HV;
-uint16_t I_SENSE_HV;
-uint16_t V_SENSE_12;
-uint16_t I_SENSE_12;
-uint16_t V_SENSE_5;
-uint16_t I_SENSE_5;
-uint16_t VDDCORE;
-uint16_t INTERNAL_TEMP;
-
-// measurements
-float voltage_out_HV;
-float voltage_out_12;
-float voltage_out_5;
-
 float vddcore;
 float internal_temp;
 
-float test_vsense_5 = 0;
-float test_vsense_12 = 0;
-I2C_ReqStatus status1;
-I2C_ReqStatus status2;
+int buffer_available_cdc = -2;
+int buffer_available_vendor = -2;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void PeriphCommonClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_GPDMA1_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_FDCAN1_Init(void);
 static void MX_FLASH_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
-static void MX_USB_PCD_Init(void);
 static void MX_ICACHE_Init(void);
+static void MX_USB_PCD_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -163,47 +148,28 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* Configure the peripherals common clocks */
-  PeriphCommonClock_Config();
-
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_GPDMA1_Init();
   MX_ADC1_Init();
-  MX_FDCAN1_Init();
   MX_FLASH_Init();
   MX_I2C1_Init();
   MX_USART1_UART_Init();
-  MX_USB_PCD_Init();
   MX_ICACHE_Init();
+  MX_USB_PCD_Init();
   /* USER CODE BEGIN 2 */
 
 	// start USB
-//	tusb_init();
+	tusb_init();
 	uint32_t start = HAL_GetTick();
 
-	// calibrate ADC
-	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
-
-//	FDCAN_TxHeaderTypeDef TxHeader;
-//	uint8_t TxData[8] = {0x55, 0xAA}; // example data
-//	HAL_FDCAN_Start(&hfdcan1);
+	ADC_Init(&hadc1);
 
 	I2C_Init(&hi2c1);
-
-	// Set up message header
-//	  TxHeader.Identifier = 0x321;
-//	  TxHeader.IdType = FDCAN_STANDARD_ID;
-//	  TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-//	  TxHeader.DataLength = FDCAN_DLC_BYTES_2;
-//	  TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-//	  TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
-//	  TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
-//	  TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-//	  TxHeader.MessageMarker = 0;
 
   /* USER CODE END 2 */
 
@@ -227,33 +193,6 @@ int main(void)
 		HAL_GPIO_WritePin(IND_G_GPIO_Port, IND_G_Pin, !IND_G);
 		HAL_GPIO_WritePin(IND_B_GPIO_Port, IND_B_Pin, !IND_B);
 
-		// read all analog inputs
-		HAL_ADC_Start(&hadc1);
-		HAL_ADC_PollForConversion(&hadc1, 100);
-		V_SENSE_HV = HAL_ADC_GetValue(&hadc1);
-		HAL_ADC_PollForConversion(&hadc1, 100);
-		V_SENSE_12 = HAL_ADC_GetValue(&hadc1);
-		HAL_ADC_PollForConversion(&hadc1, 100);
-		V_SENSE_5 = HAL_ADC_GetValue(&hadc1);
-		HAL_ADC_PollForConversion(&hadc1, 100);
-		I_SENSE_HV = HAL_ADC_GetValue(&hadc1);
-		HAL_ADC_PollForConversion(&hadc1, 100);
-		I_SENSE_12 = HAL_ADC_GetValue(&hadc1);
-		HAL_ADC_PollForConversion(&hadc1, 100);
-		I_SENSE_5 = HAL_ADC_GetValue(&hadc1);
-//		HAL_ADC_PollForConversion(&hadc1, 100);
-//		VDDCORE = HAL_ADC_GetValue(&hadc1);
-//		HAL_ADC_PollForConversion(&hadc1, 100);
-//		INTERNAL_TEMP = HAL_ADC_GetValue(&hadc1);
-
-		// calculate measurements
-		voltage_out_12 = V_SENSE_12 * 0.0080566406;
-		voltage_out_5 = V_SENSE_5 * 0.0014648438;
-		voltage_out_HV = V_SENSE_HV * 0.0194091797;
-
-//		vddcore = VDDCORE / 4095.0 * 3;
-//		internal_temp = (INTERNAL_TEMP * 3 / 4095.0 - 0.76) / 0.0025 + 25;
-
 		// calculate next state
 
 		if ((BUTTON || BOOT0_SENSE) && !BUTTON_LAST) {
@@ -265,11 +204,11 @@ int main(void)
 			HV_RELAY = 0;
 		}
 
-		if (voltage_out_5 > 4.8 || voltage_out_12 > 10.5) {
+		if (v_sense_5 > 4.8 || v_sense_12 > 10.5) {
 			IND_R = 1;
 			IND_G = 0;
 			IND_B = 0;
-			if (voltage_out_5 > 4.8 && voltage_out_12 > 10.5) {
+			if (v_sense_5 > 4.8 && v_sense_12 > 10.5) {
 				IND_R = 0;
 				IND_G = 1;
 				IND_B = 0;
@@ -291,30 +230,27 @@ int main(void)
 
 		if (HAL_GetTick() - start > 100) {
 			start = HAL_GetTick();
-//			send_telemetry("master_telem voltage_out_5 %.3f\n", &voltage_out_5,'f');
-//			send_telemetry("master_telem voltage_out_12 %.3f\n", &voltage_out_12, 'f');
-//			send_telemetry("master_telem voltage_out_HV %.3f\n", &voltage_out_HV, 'f');
-//
-//			send_telemetry("master_telem current_out_5 %d\n", &I_SENSE_5, 'i');
-//			send_telemetry("master_telem current_out_12 %d\n", &I_SENSE_12, 'i');
-//			send_telemetry("master_telem current_out_HV %d\n", &I_SENSE_HV, 'i');
-//
-//			send_telemetry("master_telem oc_sense_HV %d\n", &OC_SENSE_HV, 'i');
-//			send_telemetry("master_telem ov_sense_HV %d\n", &OV_SENSE_HV, 'i');
-//			send_telemetry("master_telem fault_12 %d\n", &FAULT_12, 'i');
-//			send_telemetry("master_telem button %d\n", &BUTTON, 'i');
-//			send_telemetry("master_telem boot0_sense %d\n", &BOOT0_SENSE, 'i');
-//			send_telemetry("master_telem hv_relay %d\n", &HV_RELAY, 'i');
-//			HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData);
-			// test write to I2C
-//			HAL_I2C_Master_Transmit(&hi2c1, 0x50, TxData, 2, 100);
-
-//			status1 = I2C_ReadTileReg(0x28, 0x04, &test_vsense_5, 4);
-//			status2 = I2C_ReadTileReg(0x28, 0x05, &test_vsense_12, 4);
-			I2C_ReadAllTiles();
+//			I2C_ReadAllTiles();
+//			if (buffer_available_cdc > 0) {
+//				tud_cdc_n_write(0, "hello", 5);
+//				tud_cdc_n_write(0, "world", 5);
+//			}
+//			if (buffer_available_vendor > 0) {
+//				tud_vendor_n_write(0, "hello", 5);
+//				tud_vendor_n_write(0, "world2", 6);
+//			}
+//			buffer_available_vendor = tud_vendor_n_write_available(0);
+//			buffer_available_cdc = tud_cdc_n_write_available(0);
 		}
 
-//		tud_task();
+		I2C_ReadAllTiles_StatusOnly();
+		I2C_IterativeReadAllTiles();
+//		I2C_ReadTileReg(0x01, 0x0A, &mt2_slave_data[0x01].v_sense_hv, 4);
+
+  		for(int i = 0; i < 32; i++) {
+			Reporter_IterativeReportAllTiles();
+			tud_task();
+		}
 
 	}
   /* USER CODE END 3 */
@@ -378,35 +314,6 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief Peripherals Common Clock Configuration
-  * @retval None
-  */
-void PeriphCommonClock_Config(void)
-{
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
-
-  /** Initializes the peripherals clock
-  */
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_ADCDAC|RCC_PERIPHCLK_FDCAN;
-  PeriphClkInitStruct.PLL2.PLL2Source = RCC_PLL2_SOURCE_HSE;
-  PeriphClkInitStruct.PLL2.PLL2M = 8;
-  PeriphClkInitStruct.PLL2.PLL2N = 100;
-  PeriphClkInitStruct.PLL2.PLL2P = 2;
-  PeriphClkInitStruct.PLL2.PLL2Q = 2;
-  PeriphClkInitStruct.PLL2.PLL2R = 8;
-  PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2_VCIRANGE_1;
-  PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2_VCORANGE_WIDE;
-  PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
-  PeriphClkInitStruct.PLL2.PLL2ClockOut = RCC_PLL2_DIVQ|RCC_PLL2_DIVR;
-  PeriphClkInitStruct.FdcanClockSelection = RCC_FDCANCLKSOURCE_PLL2Q;
-  PeriphClkInitStruct.AdcDacClockSelection = RCC_ADCDACCLKSOURCE_PLL2R;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
-}
-
-/**
   * @brief ADC1 Initialization Function
   * @param None
   * @retval None
@@ -433,12 +340,12 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.NbrOfConversion = 6;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.SamplingMode = ADC_SAMPLING_MODE_NORMAL;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc1.Init.OversamplingMode = DISABLE;
@@ -511,49 +418,6 @@ static void MX_ADC1_Init(void)
 }
 
 /**
-  * @brief FDCAN1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_FDCAN1_Init(void)
-{
-
-  /* USER CODE BEGIN FDCAN1_Init 0 */
-
-  /* USER CODE END FDCAN1_Init 0 */
-
-  /* USER CODE BEGIN FDCAN1_Init 1 */
-
-  /* USER CODE END FDCAN1_Init 1 */
-  hfdcan1.Instance = FDCAN1;
-  hfdcan1.Init.ClockDivider = FDCAN_CLOCK_DIV1;
-  hfdcan1.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
-  hfdcan1.Init.Mode = FDCAN_MODE_NORMAL;
-  hfdcan1.Init.AutoRetransmission = DISABLE;
-  hfdcan1.Init.TransmitPause = DISABLE;
-  hfdcan1.Init.ProtocolException = DISABLE;
-  hfdcan1.Init.NominalPrescaler = 10;
-  hfdcan1.Init.NominalSyncJumpWidth = 4;
-  hfdcan1.Init.NominalTimeSeg1 = 13;
-  hfdcan1.Init.NominalTimeSeg2 = 6;
-  hfdcan1.Init.DataPrescaler = 1;
-  hfdcan1.Init.DataSyncJumpWidth = 1;
-  hfdcan1.Init.DataTimeSeg1 = 1;
-  hfdcan1.Init.DataTimeSeg2 = 1;
-  hfdcan1.Init.StdFiltersNbr = 0;
-  hfdcan1.Init.ExtFiltersNbr = 0;
-  hfdcan1.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
-  if (HAL_FDCAN_Init(&hfdcan1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN FDCAN1_Init 2 */
-
-  /* USER CODE END FDCAN1_Init 2 */
-
-}
-
-/**
   * @brief FLASH Initialization Function
   * @param None
   * @retval None
@@ -579,6 +443,34 @@ static void MX_FLASH_Init(void)
   /* USER CODE BEGIN FLASH_Init 2 */
 
   /* USER CODE END FLASH_Init 2 */
+
+}
+
+/**
+  * @brief GPDMA1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPDMA1_Init(void)
+{
+
+  /* USER CODE BEGIN GPDMA1_Init 0 */
+
+  /* USER CODE END GPDMA1_Init 0 */
+
+  /* Peripheral clock enable */
+  __HAL_RCC_GPDMA1_CLK_ENABLE();
+
+  /* GPDMA1 interrupt Init */
+    HAL_NVIC_SetPriority(GPDMA1_Channel0_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(GPDMA1_Channel0_IRQn);
+
+  /* USER CODE BEGIN GPDMA1_Init 1 */
+
+  /* USER CODE END GPDMA1_Init 1 */
+  /* USER CODE BEGIN GPDMA1_Init 2 */
+
+  /* USER CODE END GPDMA1_Init 2 */
 
 }
 
