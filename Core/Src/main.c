@@ -24,6 +24,7 @@
 
 #include "tusb.h"
 #include <stdio.h>
+#include "i2c_master.h"
 
 /* USER CODE END Includes */
 
@@ -91,6 +92,9 @@ float vddcore;
 float internal_temp;
 
 float test_vsense_5 = 0;
+float test_vsense_12 = 0;
+I2C_ReqStatus status1;
+I2C_ReqStatus status2;
 
 /* USER CODE END PV */
 
@@ -184,20 +188,22 @@ int main(void)
 	// calibrate ADC
 	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
 
-	FDCAN_TxHeaderTypeDef TxHeader;
-	uint8_t TxData[8] = {0x55, 0xAA}; // example data
-	HAL_FDCAN_Start(&hfdcan1);
+//	FDCAN_TxHeaderTypeDef TxHeader;
+//	uint8_t TxData[8] = {0x55, 0xAA}; // example data
+//	HAL_FDCAN_Start(&hfdcan1);
+
+	I2C_Init(&hi2c1);
 
 	// Set up message header
-	  TxHeader.Identifier = 0x321;
-	  TxHeader.IdType = FDCAN_STANDARD_ID;
-	  TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-	  TxHeader.DataLength = FDCAN_DLC_BYTES_2;
-	  TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-	  TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
-	  TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
-	  TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-	  TxHeader.MessageMarker = 0;
+//	  TxHeader.Identifier = 0x321;
+//	  TxHeader.IdType = FDCAN_STANDARD_ID;
+//	  TxHeader.TxFrameType = FDCAN_DATA_FRAME;
+//	  TxHeader.DataLength = FDCAN_DLC_BYTES_2;
+//	  TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+//	  TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
+//	  TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
+//	  TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+//	  TxHeader.MessageMarker = 0;
 
   /* USER CODE END 2 */
 
@@ -283,7 +289,7 @@ int main(void)
 			IND_B = 1;
 		}
 
-		if (HAL_GetTick() - start > 500) {
+		if (HAL_GetTick() - start > 100) {
 			start = HAL_GetTick();
 //			send_telemetry("master_telem voltage_out_5 %.3f\n", &voltage_out_5,'f');
 //			send_telemetry("master_telem voltage_out_12 %.3f\n", &voltage_out_12, 'f');
@@ -303,8 +309,9 @@ int main(void)
 			// test write to I2C
 //			HAL_I2C_Master_Transmit(&hi2c1, 0x50, TxData, 2, 100);
 
-			// test read register 0 to test_vsense_5 (size 4)
-			HAL_I2C_Mem_Read(&hi2c1, 0x50, 0, I2C_MEMADD_SIZE_8BIT, &test_vsense_5, 4, 100);
+//			status1 = I2C_ReadTileReg(0x28, 0x04, &test_vsense_5, 4);
+//			status2 = I2C_ReadTileReg(0x28, 0x05, &test_vsense_12, 4);
+			I2C_ReadAllTiles();
 		}
 
 //		tud_task();
@@ -591,7 +598,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x60808CD3;
+  hi2c1.Init.Timing = 0x00C035A6;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -614,6 +621,13 @@ static void MX_I2C1_Init(void)
   /** Configure Digital filter
   */
   if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** I2C Fast mode Plus enable
+  */
+  if (HAL_I2CEx_ConfigFastModePlus(&hi2c1, I2C_FASTMODEPLUS_ENABLE) != HAL_OK)
   {
     Error_Handler();
   }
