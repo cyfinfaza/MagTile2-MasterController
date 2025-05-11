@@ -67,10 +67,14 @@ void Error_Handler(void);
 #define V_SENSE_HV_GPIO_Port GPIOA
 #define V_SENSE_12_Pin GPIO_PIN_1
 #define V_SENSE_12_GPIO_Port GPIOA
+#define V_SENSE_HV_IN_Pin GPIO_PIN_2
+#define V_SENSE_HV_IN_GPIO_Port GPIOA
 #define HV_RELAY_Pin GPIO_PIN_3
 #define HV_RELAY_GPIO_Port GPIOA
 #define SHDN_12_Pin GPIO_PIN_4
 #define SHDN_12_GPIO_Port GPIOA
+#define V_SENSE_12_IN_Pin GPIO_PIN_5
+#define V_SENSE_12_IN_GPIO_Port GPIOA
 #define V_SENSE_5_Pin GPIO_PIN_6
 #define V_SENSE_5_GPIO_Port GPIOA
 #define I_SENSE_12_Pin GPIO_PIN_7
@@ -79,10 +83,10 @@ void Error_Handler(void);
 #define I_SENSE_5_GPIO_Port GPIOB
 #define I_SENSE_HV_Pin GPIO_PIN_1
 #define I_SENSE_HV_GPIO_Port GPIOB
-#define IND_R_Pin GPIO_PIN_8
-#define IND_R_GPIO_Port GPIOA
-#define IND_G_Pin GPIO_PIN_9
+#define IND_G_Pin GPIO_PIN_8
 #define IND_G_GPIO_Port GPIOA
+#define IND_R_Pin GPIO_PIN_9
+#define IND_R_GPIO_Port GPIOA
 #define IND_B_Pin GPIO_PIN_10
 #define IND_B_GPIO_Port GPIOA
 #define SWDIO_Pin GPIO_PIN_13
@@ -93,6 +97,8 @@ void Error_Handler(void);
 #define SWO_GPIO_Port GPIOB
 #define BUTTON_Pin GPIO_PIN_5
 #define BUTTON_GPIO_Port GPIOB
+#define PRECHG_SSR_Pin GPIO_PIN_6
+#define PRECHG_SSR_GPIO_Port GPIOB
 #define BOOT0_SENSE_Pin GPIO_PIN_7
 #define BOOT0_SENSE_GPIO_Port GPIOB
 

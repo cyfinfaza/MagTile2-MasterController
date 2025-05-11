@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include "stm32h5xx_hal.h"
 
-#define ADC_CHANNELS 6
+#define ADC_CHANNELS 8
 
 // raw readings
 extern uint16_t V_SENSE_HV;
@@ -20,6 +20,8 @@ extern uint16_t V_SENSE_12;
 extern uint16_t I_SENSE_12;
 extern uint16_t V_SENSE_5;
 extern uint16_t I_SENSE_5;
+extern uint16_t V_SENSE_HV_IN;
+extern uint16_t V_SENSE_12_IN;
 
 // calculated values
 extern float v_sense_hv;
@@ -28,6 +30,8 @@ extern float v_sense_5;
 extern float i_sense_hv;
 extern float i_sense_12;
 extern float i_sense_5;
+extern float v_sense_hv_in;
+extern float v_sense_12_in;
 
 void ADC_Init(ADC_HandleTypeDef* hadc);
 
