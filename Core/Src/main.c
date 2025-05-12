@@ -69,6 +69,10 @@ uint8_t BOOT0_SENSE;
 // button last state
 uint8_t BUTTON_LAST = 0;
 
+// HV state machine
+uint8_t hv_active = 0;
+uint8_t precharge_complete = 0;
+
 // make global variables for all digital outputs
 extern uint8_t HV_RELAY;
 uint8_t HV_RELAY = 0;
@@ -199,12 +203,29 @@ int main(void)
 		// calculate next state
 
 		if ((BUTTON || BOOT0_SENSE) && !BUTTON_LAST) {
-			HV_RELAY = !HV_RELAY;
+			hv_active = !hv_active;
 		}
 		BUTTON_LAST = BUTTON || BOOT0_SENSE;
 
-		if (!OV_SENSE_HV || !OC_SENSE_HV) {
+		// hv state machine
+		PRECHG_SSR = hv_active;
+		if (hv_active) {
+			// if v_sense_hv is within 5% of v_sense_hv_in, set precharge complete
+			if (v_sense_hv > v_sense_hv_in * 0.95
+					&& v_sense_hv < v_sense_hv_in * 1.05) {
+				precharge_complete = 1;
+			}
+			if (precharge_complete) {
+				HV_RELAY = 1;
+			}
+		} else {
 			HV_RELAY = 0;
+			PRECHG_SSR = 0;
+			precharge_complete = 0;
+		}
+
+		if (!OV_SENSE_HV || !OC_SENSE_HV) {
+			hv_active = 0;
 		}
 
 		if (v_sense_5 > 4.8 || v_sense_12 > 10.5) {
@@ -223,6 +244,12 @@ int main(void)
 			IND_G = 1;
 			IND_B = 0;
 			HV_RELAY = 0;
+		}
+
+		if (hv_active && !precharge_complete) {
+			IND_R = 1;
+			IND_G = 0;
+			IND_B = 1;
 		}
 
 		if (HV_RELAY) {

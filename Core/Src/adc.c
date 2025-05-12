@@ -50,14 +50,14 @@ void ADC_ProcessBuffer(uint16_t* buffer) {
 	V_SENSE_12_IN = buffer[7];
 
 	// calculate measurements
-	v_sense_hv = V_SENSE_HV * 0.0194091797;
-	v_sense_12 = V_SENSE_12 * 0.0080566406;
-	v_sense_5 = V_SENSE_5 * 0.0014648438;
+	v_sense_hv = V_SENSE_HV / 65535.0f * 3.0 * (53.0f / 2.0f);
+	v_sense_12 = V_SENSE_12 / 65535.0f * 3.0 * 11.0f;
+	v_sense_5 = V_SENSE_5 / 65535.0f * 3.0 * 2.0f;
 	i_sense_hv = (I_SENSE_HV / 65535.0f * 3.0 - 1.5) / 0.088f + (HV_RELAY ? 0.6f : 0.0f);
 	i_sense_12 = I_SENSE_12 / 65535.0f * 3.0 ;
 	i_sense_5 = I_SENSE_5 / 65535.0f * 3.0 / 0.12f;
-	v_sense_hv_in = V_SENSE_HV_IN * 0.0194091797;
-	v_sense_12_in = V_SENSE_12_IN * 0.0080566406;
+	v_sense_hv_in = V_SENSE_HV_IN / 65535.0f * 3.0 * (53.0f / 2.0f);
+	v_sense_12_in = V_SENSE_12_IN / 65535.0f * 3.0 * 11.0f;
 }
 
 void HAL_ADC_HalfConvCpltCallback(ADC_HandleTypeDef* hadc) {
