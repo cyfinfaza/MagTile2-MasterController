@@ -51,6 +51,8 @@ DMA_NodeTypeDef Node_GPDMA1_Channel0;
 DMA_QListTypeDef List_GPDMA1_Channel0;
 DMA_HandleTypeDef handle_GPDMA1_Channel0;
 
+FDCAN_HandleTypeDef hfdcan1;
+
 I2C_HandleTypeDef hi2c1;
 
 UART_HandleTypeDef huart1;
@@ -100,6 +102,7 @@ static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_ICACHE_Init(void);
 static void MX_USB_PCD_Init(void);
+static void MX_FDCAN1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -129,6 +132,11 @@ void send_telemetry(const char *format, void *value_ptr, char type) {
 	tud_vendor_write_flush();
 	tud_task();
 }
+
+// CAN
+FDCAN_TxHeaderTypeDef TxHeader;
+uint8_t TxData[8] = {0x55, 0xAA}; // example data
+
 /* USER CODE END 0 */
 
 /**
@@ -167,6 +175,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_ICACHE_Init();
   MX_USB_PCD_Init();
+  MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
 
 	// start USB
@@ -176,6 +185,22 @@ int main(void)
 	ADC_Init(&hadc1);
 
 	I2C_Init(&hi2c1);
+
+	// CAN
+	HAL_FDCAN_Start(&hfdcan1);
+	TxHeader.Identifier = 0x321;
+	  TxHeader.IdType = FDCAN_STANDARD_ID;
+	  TxHeader.TxFrameType = FDCAN_DATA_FRAME;
+	  TxHeader.DataLength = FDCAN_DLC_BYTES_2;
+	  TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+	  TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
+	  TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
+	  TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+	  TxHeader.MessageMarker = 0;
+	  TxHeader.FDFormat = FDCAN_FD_CAN;           // Enable CAN FD
+	  TxHeader.BitRateSwitch = FDCAN_BRS_ON;      // Enable faster bitrate during data phase
+	  TxHeader.TxFrameType = FDCAN_DATA_FRAME;
+	  TxHeader.DataLength = FDCAN_DLC_BYTES_8;   // CAN FD allows up to 64 bytes
 
   /* USER CODE END 2 */
 
@@ -258,20 +283,21 @@ int main(void)
 			IND_B = 1;
 		}
 
-//		if (HAL_GetTick() - start > 100) {
-//			start = HAL_GetTick();
-////			I2C_ReadAllTiles();
-////			if (buffer_available_cdc > 0) {
-////				tud_cdc_n_write(0, "hello", 5);
-////				tud_cdc_n_write(0, "world", 5);
-////			}
-////			if (buffer_available_vendor > 0) {
-////				tud_vendor_n_write(0, "hello", 5);
-////				tud_vendor_n_write(0, "world2", 6);
-////			}
-////			buffer_available_vendor = tud_vendor_n_write_available(0);
-////			buffer_available_cdc = tud_cdc_n_write_available(0);
-//		}
+		if (HAL_GetTick() - start > 500) {
+			start = HAL_GetTick();
+			HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData);
+//			I2C_ReadAllTiles();
+//			if (buffer_available_cdc > 0) {
+//				tud_cdc_n_write(0, "hello", 5);
+//				tud_cdc_n_write(0, "world", 5);
+//			}
+//			if (buffer_available_vendor > 0) {
+//				tud_vendor_n_write(0, "hello", 5);
+//				tud_vendor_n_write(0, "world2", 6);
+//			}
+//			buffer_available_vendor = tud_vendor_n_write_available(0);
+//			buffer_available_cdc = tud_cdc_n_write_available(0);
+		}
 //
 		I2C_ReadAllTiles_StatusOnly();
 		I2C_IterativeReadAllTiles();
@@ -467,6 +493,49 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief FDCAN1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_FDCAN1_Init(void)
+{
+
+  /* USER CODE BEGIN FDCAN1_Init 0 */
+
+  /* USER CODE END FDCAN1_Init 0 */
+
+  /* USER CODE BEGIN FDCAN1_Init 1 */
+
+  /* USER CODE END FDCAN1_Init 1 */
+  hfdcan1.Instance = FDCAN1;
+  hfdcan1.Init.ClockDivider = FDCAN_CLOCK_DIV1;
+  hfdcan1.Init.FrameFormat = FDCAN_FRAME_FD_BRS;
+  hfdcan1.Init.Mode = FDCAN_MODE_NORMAL;
+  hfdcan1.Init.AutoRetransmission = DISABLE;
+  hfdcan1.Init.TransmitPause = DISABLE;
+  hfdcan1.Init.ProtocolException = DISABLE;
+  hfdcan1.Init.NominalPrescaler = 25;
+  hfdcan1.Init.NominalSyncJumpWidth = 4;
+  hfdcan1.Init.NominalTimeSeg1 = 13;
+  hfdcan1.Init.NominalTimeSeg2 = 6;
+  hfdcan1.Init.DataPrescaler = 3;
+  hfdcan1.Init.DataSyncJumpWidth = 4;
+  hfdcan1.Init.DataTimeSeg1 = 16;
+  hfdcan1.Init.DataTimeSeg2 = 8;
+  hfdcan1.Init.StdFiltersNbr = 0;
+  hfdcan1.Init.ExtFiltersNbr = 0;
+  hfdcan1.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
+  if (HAL_FDCAN_Init(&hfdcan1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN FDCAN1_Init 2 */
+
+  /* USER CODE END FDCAN1_Init 2 */
 
 }
 
