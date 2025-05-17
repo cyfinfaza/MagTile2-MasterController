@@ -25,6 +25,7 @@
 #include "tusb.h"
 #include <stdio.h>
 #include "i2c_master.h"
+#include "can.h"
 #include "adc.h"
 #include "reporter.h"
 
@@ -135,7 +136,8 @@ void send_telemetry(const char *format, void *value_ptr, char type) {
 
 // CAN
 FDCAN_TxHeaderTypeDef TxHeader;
-uint8_t TxData[8] = {0x55, 0xAA}; // example data
+uint8_t TxData[8] = { 0x55, 0xAA }; // example data
+uint8_t can_blink = 0;
 
 /* USER CODE END 0 */
 
@@ -184,23 +186,9 @@ int main(void)
 
 	ADC_Init(&hadc1);
 
-	I2C_Init(&hi2c1);
+//	I2C_Init(&hi2c1);
 
-	// CAN
-	HAL_FDCAN_Start(&hfdcan1);
-	TxHeader.Identifier = 0x321;
-	  TxHeader.IdType = FDCAN_STANDARD_ID;
-	  TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-	  TxHeader.DataLength = FDCAN_DLC_BYTES_2;
-	  TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-	  TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
-	  TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
-	  TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-	  TxHeader.MessageMarker = 0;
-	  TxHeader.FDFormat = FDCAN_FD_CAN;           // Enable CAN FD
-	  TxHeader.BitRateSwitch = FDCAN_BRS_ON;      // Enable faster bitrate during data phase
-	  TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-	  TxHeader.DataLength = FDCAN_DLC_BYTES_8;   // CAN FD allows up to 64 bytes
+	CAN_Init(&hfdcan1);
 
   /* USER CODE END 2 */
 
@@ -283,9 +271,15 @@ int main(void)
 			IND_B = 1;
 		}
 
+		if (can_blink) {
+			IND_R = 0;
+			IND_G = 0;
+			IND_B = 0;
+		}
+
 		if (HAL_GetTick() - start > 500) {
 			start = HAL_GetTick();
-			HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, TxData);
+			CAN_SendMessage(0x123, "Hello", 6);
 //			I2C_ReadAllTiles();
 //			if (buffer_available_cdc > 0) {
 //				tud_cdc_n_write(0, "hello", 5);
@@ -299,15 +293,15 @@ int main(void)
 //			buffer_available_cdc = tud_cdc_n_write_available(0);
 		}
 //
-		I2C_ReadAllTiles_StatusOnly();
-		I2C_IterativeReadAllTiles();
+//		I2C_ReadAllTiles_StatusOnly();
+//		I2C_IterativeReadAllTiles();
 //		I2C_ReadTileReg(0x01, 0x0A, &mt2_slave_data[0x01].v_sense_hv, 4);
 
-  		for(int i = 0; i < 32; i++) {
+		for (int i = 0; i < 32; i++) {
 			Reporter_IterativeReportAllTiles();
 		}
-  		tud_vendor_write_flush();
-  		tud_task();
+		tud_vendor_write_flush();
+		tud_task();
 
 	}
   /* USER CODE END 3 */
