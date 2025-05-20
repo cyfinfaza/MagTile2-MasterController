@@ -37,7 +37,7 @@ typedef union {
 		uint8_t global_arm: 1;
 		uint8_t global_fault_clear: 1;
 	} flags;
-} MT2_Master_Status;
+} MT2_Global_State;
 
 typedef union {
 	uint8_t byte;
@@ -46,6 +46,42 @@ typedef union {
 		uint8_t local_fault_clear: 1;
 	} flags;
 } MT2_Slave_Settings;
+
+typedef union {
+	uint8_t byte;
+	struct {
+		uint8_t hv_relay_on: 1;
+		uint8_t precharge_ssr_on: 1;
+		uint8_t shdn_12_on: 1;
+	} flags;
+} MT2_Master_HvSwitchStatus;
+
+typedef union {
+	uint8_t byte;
+	struct {
+		uint8_t vendor_active: 1;
+		uint8_t cdc_active: 1;
+	} flags;
+} MT2_Master_UsbInterfaceStatus;
+
+typedef union {
+	uint16_t byte;
+	struct {
+		uint8_t ov_5v: 1;
+		uint8_t uv_5v: 1;
+		uint8_t oc_5v: 1;
+		uint8_t ov_12v: 1;
+		uint8_t uv_12v: 1;
+		uint8_t oc_12v: 1;
+		uint8_t ov_hv: 1;
+		uint8_t uv_hv: 1;
+		uint8_t oc_hv: 1;
+		uint8_t efuse_12v_fault: 1;
+		uint8_t master_overtemp: 1;
+		uint8_t precharge_fault: 1;
+		uint8_t slave_fault: 1;
+	} flags;
+} MT2_Master_PowerSystemFaults;
 
 typedef struct {
 	#define X(addr, name, access, type) type name;

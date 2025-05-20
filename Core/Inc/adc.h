@@ -22,6 +22,7 @@ extern uint16_t V_SENSE_5;
 extern uint16_t I_SENSE_5;
 extern uint16_t V_SENSE_HV_IN;
 extern uint16_t V_SENSE_12_IN;
+extern uint16_t TEMP_SENSE;
 
 // calculated values
 extern float v_sense_hv;
@@ -32,6 +33,7 @@ extern float i_sense_12;
 extern float i_sense_5;
 extern float v_sense_hv_in;
 extern float v_sense_12_in;
+extern float master_temperature;
 
 void ADC_Init(ADC_HandleTypeDef* hadc);
 

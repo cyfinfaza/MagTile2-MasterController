@@ -16,4 +16,6 @@ extern MT2_Slave_Data tile_data[MAX_TILES];
 
 int TileData_Write(uint8_t addr, uint8_t reg, void *data, uint16_t size);
 
+int TileData_Read(uint8_t addr, uint8_t reg, void *data, uint16_t* size);
+
 #endif /* INC_TILE_DATA_H_ */

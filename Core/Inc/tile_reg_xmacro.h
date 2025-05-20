@@ -11,7 +11,7 @@
 #define TILE_REG_XMACRO \
 X(0x04, slave_status, READONLY, MT2_Slave_Status) \
 X(0x05, slave_faults, READONLY, MT2_Slave_Faults) \
-X(0x06, master_status, READWRITE, MT2_Master_Status) \
+X(0x06, global_state, READWRITE, MT2_Global_State) \
 X(0x07, slave_settings, READWRITE, MT2_Slave_Settings) \
 \
 X(0x08, v_sense_5, READONLY, float) \

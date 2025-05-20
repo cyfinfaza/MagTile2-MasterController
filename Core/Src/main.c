@@ -25,6 +25,7 @@
 #include "tusb.h"
 #include <stdio.h>
 #include "i2c_master.h"
+#include "mt2_types.h"
 #include "can.h"
 #include "adc.h"
 #include "reporter.h"
@@ -72,6 +73,11 @@ uint8_t BOOT0_SENSE;
 // button last state
 uint8_t BUTTON_LAST = 0;
 
+MT2_Master_HvSwitchStatus hv_switch_status;
+MT2_Master_PowerSystemFaults power_system_faults;
+MT2_Master_UsbInterfaceStatus usb_interface_status;
+MT2_Global_State global_state;
+
 // HV state machine
 uint8_t hv_active = 0;
 uint8_t precharge_complete = 0;
@@ -89,7 +95,9 @@ float vddcore;
 float internal_temp;
 
 int buffer_available_cdc = -2;
-int buffer_available_vendor = -2;
+int buffer_available_vendor_0 = -2;
+int buffer_available_vendor_1 = -2;
+int buffer_available_vendor_2 = -2;
 
 /* USER CODE END PV */
 
@@ -138,6 +146,10 @@ void send_telemetry(const char *format, void *value_ptr, char type) {
 FDCAN_TxHeaderTypeDef TxHeader;
 uint8_t TxData[8] = { 0x55, 0xAA }; // example data
 uint8_t can_blink = 0;
+
+// Loop time
+uint32_t loop_time_start = 0;
+uint32_t loop_time = 0;
 
 /* USER CODE END 0 */
 
@@ -194,6 +206,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	loop_time_start = HAL_GetTick();
 	while (1) {
     /* USER CODE END WHILE */
 
@@ -224,8 +237,7 @@ int main(void)
 		PRECHG_SSR = hv_active;
 		if (hv_active) {
 			// if v_sense_hv is within 5% of v_sense_hv_in, set precharge complete
-			if (v_sense_hv > v_sense_hv_in * 0.95
-					&& v_sense_hv < v_sense_hv_in * 1.05) {
+			if (v_sense_hv > v_sense_hv_in * 0.95 && v_sense_hv < v_sense_hv_in * 1.05) {
 				precharge_complete = 1;
 			}
 			if (precharge_complete) {
@@ -277,9 +289,13 @@ int main(void)
 			IND_B = 0;
 		}
 
+		usb_interface_status.flags.vendor_active = tud_vendor_mounted();
+		usb_interface_status.flags.cdc_active = tud_cdc_connected();
+
 		if (HAL_GetTick() - start > 500) {
 			start = HAL_GetTick();
-			CAN_SendMessage(0x123, "Hello", 6);
+//			Reporter_IterativeReportAllTiles();
+//			CAN_SendMessage(0x123, "Hello", 6);
 //			I2C_ReadAllTiles();
 //			if (buffer_available_cdc > 0) {
 //				tud_cdc_n_write(0, "hello", 5);
@@ -297,12 +313,19 @@ int main(void)
 //		I2C_IterativeReadAllTiles();
 //		I2C_ReadTileReg(0x01, 0x0A, &mt2_slave_data[0x01].v_sense_hv, 4);
 
+		buffer_available_vendor_0 = tud_vendor_write_available();
 		for (int i = 0; i < 32; i++) {
 			Reporter_IterativeReportAllTiles();
+			tud_task();
 		}
-		tud_vendor_write_flush();
-		tud_task();
-
+		buffer_available_vendor_1 = tud_vendor_write_available();
+//		for (int i = 0; i < 32; i++) {
+//			tud_task();
+//		}
+		buffer_available_vendor_2 = tud_vendor_write_available();
+//		HAL_Delay(5);
+		loop_time = HAL_GetTick() - loop_time_start;
+		loop_time_start = HAL_GetTick();
 	}
   /* USER CODE END 3 */
 }
@@ -744,7 +767,7 @@ static void MX_USB_PCD_Init(void)
   hpcd_USB_DRD_FS.Init.dev_endpoints = 8;
   hpcd_USB_DRD_FS.Init.speed = USBD_FS_SPEED;
   hpcd_USB_DRD_FS.Init.phy_itface = PCD_PHY_EMBEDDED;
-  hpcd_USB_DRD_FS.Init.Sof_enable = DISABLE;
+  hpcd_USB_DRD_FS.Init.Sof_enable = ENABLE;
   hpcd_USB_DRD_FS.Init.low_power_enable = DISABLE;
   hpcd_USB_DRD_FS.Init.lpm_enable = DISABLE;
   hpcd_USB_DRD_FS.Init.battery_charging_enable = DISABLE;

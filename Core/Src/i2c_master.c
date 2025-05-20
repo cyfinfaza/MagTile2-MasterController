@@ -61,7 +61,7 @@ void I2C_ReadTile_Full(uint8_t addr) {
 	if (I2C_ReadTile_StatusOnly(addr)) {
 		I2C_ReadTileReg(addr, 0x04, &tile_data[addr].slave_status, 1);
 		I2C_ReadTileReg(addr, 0x05, &tile_data[addr].slave_faults, 1);
-		I2C_ReadTileReg(addr, 0x06, &tile_data[addr].master_status, 1);
+		I2C_ReadTileReg(addr, 0x06, &tile_data[addr].global_state, 1);
 		I2C_ReadTileReg(addr, 0x07, &tile_data[addr].slave_settings, 1);
 
 		I2C_ReadTileReg(addr, 0x08, &tile_data[addr].v_sense_5, 4);
