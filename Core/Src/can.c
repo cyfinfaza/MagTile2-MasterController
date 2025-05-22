@@ -61,7 +61,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *which_fdcan, uint32_t RxFifo
 		uint8_t rx_data[64];
 		if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rx_header, rx_data)
 				!= HAL_OK) {
-			Error_Handler();
+//			Error_Handler();
 		}
 		// the 8 LSb of the CAN ID is the address
 		uint8_t addr = rx_header.Identifier & 0xFF;
@@ -72,6 +72,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *which_fdcan, uint32_t RxFifo
 			memcpy(can_rx_test[reg].bytes, &rx_data[1], len);
 		}
 		// write to tile_data
+		TileData_JustHeardFrom(addr);
 		TileData_Write(addr, reg, &can_rx_test[reg], len);
 		can_blink = ++can_blink % 2;
 	}

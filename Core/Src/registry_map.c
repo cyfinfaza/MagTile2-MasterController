@@ -8,18 +8,19 @@
 #include "registry.h"
 #include "mt2_types.h"
 #include "adc.h"
+#include "master_reg_xmacro.h"
 
 #define X(addr, name, access, type) extern type name;
-    TILE_REG_XMACRO
+    MASTER_REG_XMACRO
 #undef X
 
-#define REGISTRY_COUNT 255
+#define REGISTRY_COUNT 128
 
 
 // Manual entries
 const Registry_RegConfig registry_table[REGISTRY_COUNT] = {
 #define X(addr, name, access, type) Registry_DEFINE(addr, &name, Registry_##access),
-    TILE_REG_XMACRO
+		MASTER_REG_XMACRO
 #undef X
 };
 

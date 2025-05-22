@@ -53,8 +53,11 @@ typedef union {
 		uint8_t hv_relay_on: 1;
 		uint8_t precharge_ssr_on: 1;
 		uint8_t shdn_12_on: 1;
+		uint8_t fault_12: 1;
+		uint8_t hv_shutdown_from_fault: 1;
+		uint8_t hv_ready: 1;
 	} flags;
-} MT2_Master_HvSwitchStatus;
+} MT2_Master_PowerSwitchStatus;
 
 typedef union {
 	uint8_t byte;

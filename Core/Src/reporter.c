@@ -12,9 +12,9 @@
 #include "tile_data.h"
 #include "cobs.h"
 #include "tile_reg_xmacro.h"
+#include "registry.h"
 
-#define MAX_TILES 2
-#define MAX_REGISTERS 128
+#define TILE_REGISTRY_SIZE 128
 #define MAX_MSG_SIZE 16
 
 uint8_t iter_tile_addr = 1;
@@ -45,15 +45,15 @@ static int Reporter_EncodeMessage(uint8_t *encoded, uint8_t addr, uint8_t reg, v
 
 // not idempotent
 void Reporter_IterativeReportAllTiles() {
-	uint8_t buffer[MAX_MSG_SIZE];
 
 	if (!tud_vendor_mounted() || tud_vendor_write_available() < MAX_MSG_SIZE) {
 		return;
 	}
 
+	uint8_t buffer[MAX_MSG_SIZE];
 	uint8_t data[MAX_MSG_SIZE];
 	uint16_t data_len = 0;
-	for (int i = 0; i < MAX_REGISTERS * MAX_TILES; i++) {
+	for (int i = 0; i < TILE_REGISTRY_SIZE * MAX_TILES; i++) {
 		int result = TileData_Read(iter_tile_addr, iter_tile_reg, data, &data_len);
 		if (result == 0) {
 			// encode the message
@@ -63,7 +63,7 @@ void Reporter_IterativeReportAllTiles() {
 //				tud_vendor_write_flush();
 			}
 		}
-		if (iter_tile_reg++ >= MAX_REGISTERS) {
+		if (++iter_tile_reg >= TILE_REGISTRY_SIZE) {
 			iter_tile_reg = 0;
 			if (++iter_tile_addr > MAX_TILES) {
 				iter_tile_addr = 1; // reset to first tile
@@ -74,3 +74,29 @@ void Reporter_IterativeReportAllTiles() {
 		}
 	}
 }
+
+void Reporter_IterativeReportMaster() {
+
+	if (!tud_vendor_mounted() || tud_vendor_write_available() < MAX_MSG_SIZE) {
+		return;
+	}
+
+	uint8_t buffer[MAX_MSG_SIZE];
+	for (int i = 0; i < Registry_GetTotal(); i++) {
+		char reg_enabled = registry_table[iter_master_reg].enabled;
+		if (reg_enabled) {
+			int encoded_size = Reporter_EncodeMessage(buffer, 0x00, iter_master_reg, (void *)registry_table[iter_master_reg].addr, registry_table[iter_master_reg].size);
+			if (encoded_size > 0) {
+				tud_vendor_write(buffer, encoded_size);
+			}
+		}
+		if (++iter_master_reg >= Registry_GetTotal()) {
+			iter_master_reg = 0;
+		}
+		if (reg_enabled) {
+			return;
+		}
+	}
+}
+
+

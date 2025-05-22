@@ -9,6 +9,8 @@
 #include "adc.h"
 #include "stm32h5xx_hal.h"
 
+
+
 uint16_t ADC_DMA_BUFFER[ADC_CHANNELS*2];
 
 // raw readings
@@ -20,7 +22,6 @@ uint16_t V_SENSE_5 = 0;
 uint16_t I_SENSE_5 = 0;
 uint16_t V_SENSE_HV_IN = 0;
 uint16_t V_SENSE_12_IN = 0;
-uint16_t TEMP_SENSE = 0;
 
 // calculated values
 float v_sense_hv = 0;
@@ -31,7 +32,6 @@ float i_sense_12 = 0;
 float i_sense_5 = 0;
 float v_sense_hv_in = 0;
 float v_sense_12_in = 0;
-float master_temperature = 0;
 
 extern uint8_t HV_RELAY;
 

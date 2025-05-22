@@ -53,6 +53,8 @@ DMA_NodeTypeDef Node_GPDMA1_Channel0;
 DMA_QListTypeDef List_GPDMA1_Channel0;
 DMA_HandleTypeDef handle_GPDMA1_Channel0;
 
+DTS_HandleTypeDef hdts;
+
 FDCAN_HandleTypeDef hfdcan1;
 
 I2C_HandleTypeDef hi2c1;
@@ -73,10 +75,12 @@ uint8_t BOOT0_SENSE;
 // button last state
 uint8_t BUTTON_LAST = 0;
 
-MT2_Master_HvSwitchStatus hv_switch_status;
+MT2_Master_PowerSwitchStatus power_switch_status;
 MT2_Master_PowerSystemFaults power_system_faults;
 MT2_Master_UsbInterfaceStatus usb_interface_status;
 MT2_Global_State global_state;
+
+uint8_t clear_faults_requested = 0;
 
 // HV state machine
 uint8_t hv_active = 0;
@@ -92,7 +96,7 @@ uint8_t IND_B = 0;
 uint8_t PRECHG_SSR = 0;
 
 float vddcore;
-float internal_temp;
+int16_t mcu_temp;
 
 int buffer_available_cdc = -2;
 int buffer_available_vendor_0 = -2;
@@ -112,6 +116,7 @@ static void MX_USART1_UART_Init(void);
 static void MX_ICACHE_Init(void);
 static void MX_USB_PCD_Init(void);
 static void MX_FDCAN1_Init(void);
+static void MX_DTS_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -190,17 +195,22 @@ int main(void)
   MX_ICACHE_Init();
   MX_USB_PCD_Init();
   MX_FDCAN1_Init();
+  MX_DTS_Init();
   /* USER CODE BEGIN 2 */
 
 	// start USB
 	tusb_init();
 	uint32_t start = HAL_GetTick();
 
+	uint32_t inactivity_interval_start = HAL_GetTick();
+
 	ADC_Init(&hadc1);
 
 //	I2C_Init(&hi2c1);
 
 	CAN_Init(&hfdcan1);
+
+	HAL_DTS_Start(&hdts);
 
   /* USER CODE END 2 */
 
@@ -289,8 +299,21 @@ int main(void)
 			IND_B = 0;
 		}
 
+		int32_t dts_temp = 0;
+		HAL_DTS_GetTemperature(&hdts, &dts_temp);
+		mcu_temp = dts_temp;
+
+		power_system_faults.flags.uv_12v = v_sense_12 < 10.5;
+
 		usb_interface_status.flags.vendor_active = tud_vendor_mounted();
 		usb_interface_status.flags.cdc_active = tud_cdc_connected();
+
+		power_switch_status.flags.hv_relay_on = HV_RELAY;
+		power_switch_status.flags.precharge_ssr_on = PRECHG_SSR;
+		power_switch_status.flags.shdn_12_on = SHDN_12;
+		power_switch_status.flags.fault_12 = !FAULT_12;
+		power_switch_status.flags.hv_shutdown_from_fault = 0;
+		power_switch_status.flags.hv_ready = !power_system_faults.byte;
 
 		if (HAL_GetTick() - start > 500) {
 			start = HAL_GetTick();
@@ -308,24 +331,32 @@ int main(void)
 //			buffer_available_vendor = tud_vendor_n_write_available(0);
 //			buffer_available_cdc = tud_cdc_n_write_available(0);
 		}
+
+		if (HAL_GetTick() - inactivity_interval_start > 100) {
+			inactivity_interval_start = HAL_GetTick();
+			TileData_MarkInactiveTiles();
+		}
 //
 //		I2C_ReadAllTiles_StatusOnly();
 //		I2C_IterativeReadAllTiles();
 //		I2C_ReadTileReg(0x01, 0x0A, &mt2_slave_data[0x01].v_sense_hv, 4);
 
-		buffer_available_vendor_0 = tud_vendor_write_available();
+//		buffer_available_vendor_0 = tud_vendor_write_available();
+		Reporter_IterativeReportMaster();
 		for (int i = 0; i < 32; i++) {
 			Reporter_IterativeReportAllTiles();
-			tud_task();
 		}
-		buffer_available_vendor_1 = tud_vendor_write_available();
-//		for (int i = 0; i < 32; i++) {
-//			tud_task();
-//		}
-		buffer_available_vendor_2 = tud_vendor_write_available();
-//		HAL_Delay(5);
-		loop_time = HAL_GetTick() - loop_time_start;
-		loop_time_start = HAL_GetTick();
+		tud_task();
+//		buffer_available_vendor_1 = tud_vendor_write_available();
+////		for (int i = 0; i < 32; i++) {
+////			tud_task();
+////		}
+//		buffer_available_vendor_2 = tud_vendor_write_available();
+////		HAL_Delay(5);
+//		loop_time = HAL_GetTick() - loop_time_start;
+//		loop_time_start = HAL_GetTick();
+//		Reporter_IterativeReportAllTiles();
+//		tud_task();
 	}
   /* USER CODE END 3 */
 }
@@ -510,6 +541,39 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief DTS Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_DTS_Init(void)
+{
+
+  /* USER CODE BEGIN DTS_Init 0 */
+
+  /* USER CODE END DTS_Init 0 */
+
+  /* USER CODE BEGIN DTS_Init 1 */
+
+  /* USER CODE END DTS_Init 1 */
+  hdts.Instance = DTS;
+  hdts.Init.QuickMeasure = DTS_QUICKMEAS_DISABLE;
+  hdts.Init.RefClock = DTS_REFCLKSEL_PCLK;
+  hdts.Init.TriggerInput = DTS_TRIGGER_HW_NONE;
+  hdts.Init.SamplingTime = DTS_SMP_TIME_8_CYCLE;
+  hdts.Init.Divider = 0;
+  hdts.Init.HighThreshold = 0x0;
+  hdts.Init.LowThreshold = 0x0;
+  if (HAL_DTS_Init(&hdts) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN DTS_Init 2 */
+
+  /* USER CODE END DTS_Init 2 */
 
 }
 

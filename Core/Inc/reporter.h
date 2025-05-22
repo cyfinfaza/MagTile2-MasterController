@@ -10,4 +10,6 @@
 
 void Reporter_IterativeReportAllTiles(void);
 
+void Reporter_IterativeReportMaster(void);
+
 #endif /* INC_REPORTER_H_ */
