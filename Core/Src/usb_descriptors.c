@@ -33,9 +33,9 @@
  *   [MSB]         HID | MSC | CDC          [LSB]
  */
 #define _PID_MAP(itf, n)  ( (CFG_TUD_##itf) << (n) )
-#define USB_PID           0x4004
+#define USB_PID           0x0F00
 
-#define USB_VID   0xCafe
+#define USB_VID   0xC2C2
 #define USB_BCD   0x0210
 
 //--------------------------------------------------------------------+
@@ -226,12 +226,12 @@ uint8_t const desc_ms_os_20[] =
   '8', 0x00, 'A', 0x00, 'F', 0x00, 'F', 0x00, 'F', 0x00, '9', 0x00, 'D', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-#define URL  "localhost:3000"
+#define URL  "magtile2-manager.cy2.me"
 
 const tusb_desc_webusb_url_t desc_url = {
   .bLength         = 3 + sizeof(URL) - 1,
   .bDescriptorType = 3, // WEBUSB URL type
-  .bScheme         = 0, // 0: http, 1: https
+  .bScheme         = 1, // 0: http, 1: https
   .url             = URL
 };
 
@@ -275,9 +275,9 @@ static const char* string_desc_arr[] = {
   "Rutgers SIL",                // 1: Manufacturer
   "MagTile2 Master Tile",                   // 2: Product
   "0000000000000001",           // 3: Serial Number
-  "MagTile2 CDC Interface",     // 4: CDC Interface
-  "MagTile2 Vendor Interface",  // 5: WebUSB Vendor Interface
-  "MagTile2 Composite Config",  // 6: Configuration Description
+  "MagTile2 Virtual Serial Port",     // 4: CDC Interface
+  "MagTile2 Management Interface",  // 5: WebUSB Vendor Interface
+  "MagTile2 Composite Configuration",  // 6: Configuration Description
 };
 
 static uint16_t _desc_str[32 + 1];
