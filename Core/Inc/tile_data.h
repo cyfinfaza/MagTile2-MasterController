@@ -10,7 +10,7 @@
 
 #include "mt2_types.h"
 
-#define MAX_TILES 4
+#define MAX_TILES 10
 #define ALIVE_TIMEOUT 500 // ms
 
 extern MT2_Slave_Data tile_data[MAX_TILES];
