@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include "tile_data.h"
 
 #define MESSAGE_MAX_LEN 8  // Max COBS-decoded message length (adjust as needed)
 
@@ -30,9 +31,26 @@ void USB_ProcessMessage(uint8_t *buffer, uint16_t bufsize) {
 	uint8_t data_size = cobs_result.out_len - 2;
 	// if the first byte is 0x00, the message is trying to write to a master register
 	if (cobs_decoded_message[0] == 0x00) {
-		Registry_RegConfig *reg = (Registry_RegConfig *)&registry_table[cobs_decoded_message[1]];
-		if (reg->enabled && reg->access == Registry_READWRITE && data_size == reg->size) {
-			memcpy((void *)reg->addr, &cobs_decoded_message[2], reg->size);
+		uint8_t reg = cobs_decoded_message[1];
+		Registry_RegConfig *reg_config = (Registry_RegConfig*) &registry_table[reg];
+		if (reg < 0x80) {
+			if (reg_config->enabled && reg_config->access == Registry_READWRITE && data_size == reg_config->size) {
+				memcpy((void*) reg_config->addr, &cobs_decoded_message[2], reg_config->size);
+			}
+		} else {
+			// handle command endpoints
+			if (reg & 0x80) {
+				if (reg == 0x80 && data_size == 4) {
+					// this command means set coil setpoint for tile <byte 1> and coil index <byte 2> with value <bytes 3-4>
+					uint8_t tile_id = cobs_decoded_message[2];
+					uint8_t coil_index = cobs_decoded_message[3];
+					uint16_t setpoint;
+					memcpy(&setpoint, &cobs_decoded_message[4], sizeof(setpoint));
+					if (tile_id < MAX_TILES && coil_index < 9) {
+						coil_setpoints[tile_id][coil_index] = setpoint;
+					}
+				}
+			}
 		}
 	}
 }

@@ -11,9 +11,13 @@
 #include "mt2_types.h"
 
 #define MAX_TILES 10
+
+#define TILE_MAP_SENTINEL 0xFF // must be larger than MAX_TILES
+
 #define ALIVE_TIMEOUT 500 // ms
 
 extern MT2_Slave_Data tile_data[MAX_TILES];
+extern uint16_t coil_setpoints[MAX_TILES][9];
 
 int TileData_Write(uint8_t addr, uint8_t reg, void *data, uint16_t size);
 
@@ -22,5 +26,11 @@ int TileData_Read(uint8_t addr, uint8_t reg, void *data, uint16_t* size);
 void TileData_JustHeardFrom(uint8_t addr);
 
 void TileData_MarkInactiveTiles();
+
+void TileData_ComputeCoordinates(void);
+
+int TileData_AssignSetpoint(uint8_t x, uint8_t y, uint16_t setpoint);
+
+int TileData_IterativeSendSetpoints(void);
 
 #endif /* INC_TILE_DATA_H_ */

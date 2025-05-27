@@ -339,11 +339,14 @@ int main(void)
 		if (HAL_GetTick() - inactivity_interval_start > 100) {
 			inactivity_interval_start = HAL_GetTick();
 			TileData_MarkInactiveTiles();
+			TileData_ComputeCoordinates();
 		}
 
 //		I2C_ReadAllTiles_StatusOnly();
 //		I2C_IterativeReadAllTiles();
 //		I2C_ReadTileReg(0x01, 0x0A, &mt2_slave_data[0x01].v_sense_hv, 4);
+
+		TileData_IterativeSendSetpoints();
 
 		Reporter_IterativeReportMaster();
 		for (int i = 0; i < 32; i++) {
