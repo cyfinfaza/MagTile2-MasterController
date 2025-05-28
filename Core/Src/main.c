@@ -186,7 +186,6 @@ int main(void)
 
 	// start USB
 	tusb_init();
-	uint32_t start = HAL_GetTick();
 
 	uint32_t inactivity_interval_start = HAL_GetTick();
 
@@ -226,6 +225,7 @@ int main(void)
 		if (clear_faults_requested) {
 			power_system_faults.byte = 0;
 			power_switch_status.flags.hv_shutdown_from_fault = 0;
+			global_state.flags.global_fault_clear = 1;
 			clear_faults_requested = 0;
 		}
 
@@ -284,6 +284,26 @@ int main(void)
 			precharge_complete = 0;
 		}
 
+		// clear all setpoints if the HV relay is off
+		if (!HV_RELAY) {
+			memset(coil_setpoints, 0, sizeof(coil_setpoints));
+		}
+
+
+		// process tile data to check for faults
+		for (uint8_t i = 0; i < MAX_TILES; i++) {
+			if (tile_last_seen[i] + ALIVE_TIMEOUT < HAL_GetTick() && tile_data[i].slave_status.flags.alive) {
+				tile_data[i].slave_status.flags.alive = 0;
+				if (hv_active) power_system_faults.flags.communication_fault = 1;
+			}
+			if (tile_data[i].slave_status.flags.alive) {
+				if (tile_data[i].slave_faults.byte) {
+					power_system_faults.flags.slave_fault = 1;
+				}
+			}
+		}
+
+
 		if (power_system_faults.byte && hv_active) {
 			hv_active = 0;
 			power_switch_status.flags.hv_shutdown_from_fault = 1;
@@ -296,6 +316,8 @@ int main(void)
 		power_switch_status.flags.shdn_12_on = SHDN_12;
 		power_switch_status.flags.fault_12 = !FAULT_12;
 		power_switch_status.flags.hv_ready = !power_system_faults.byte;
+
+		global_state.flags.global_arm = HV_RELAY;
 
 		// set LED
 		if (HV_RELAY) {

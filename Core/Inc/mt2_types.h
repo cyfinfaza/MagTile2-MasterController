@@ -18,6 +18,7 @@ typedef union {
 		uint8_t arm_ready: 1;
 		uint8_t arm_active: 1;
 		uint8_t coils_nonzero: 1;
+		uint8_t shutdown_from_fault: 1;
 	} flags;
 } MT2_Slave_Status;
 
@@ -26,8 +27,9 @@ typedef union {
 	struct {
 		uint8_t temp_fault: 1;
 		uint8_t current_spike_fault: 1;
-		uint8_t vsense_fault: 1;
+		uint8_t vsense_fault: 1; // TODO
 		uint8_t invalid_value_fault: 1;
+		uint8_t communication_fault: 1;
 	} flags;
 } MT2_Slave_Faults;
 
@@ -83,6 +85,7 @@ typedef union {
 		uint8_t master_overtemp: 1;
 		uint8_t precharge_fault: 1;
 		uint8_t slave_fault: 1;
+		uint8_t communication_fault: 1;
 	} flags;
 } MT2_Master_PowerSystemFaults;
 

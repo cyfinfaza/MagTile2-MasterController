@@ -18,6 +18,7 @@
 
 extern MT2_Slave_Data tile_data[MAX_TILES];
 extern uint16_t coil_setpoints[MAX_TILES][9];
+extern uint32_t tile_last_seen[MAX_TILES];
 
 int TileData_Write(uint8_t addr, uint8_t reg, void *data, uint16_t size);
 
