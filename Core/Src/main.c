@@ -31,6 +31,7 @@
 #include "reporter.h"
 #include "safety_config.h"
 #include "uart.h"
+#include "serial_terminal.h"
 
 /* USER CODE END Includes */
 
@@ -86,6 +87,7 @@ uint8_t clear_faults_requested = 0;
 
 // HV state machine
 uint8_t hv_active = 0;
+uint8_t hv_activated_by_cdc = 0; // tells us whether to send ok response to cdc, whether to disable when disconnected
 uint8_t precharge_complete = 0;
 
 // make global variables for all digital outputs
@@ -265,23 +267,36 @@ int main(void)
 		BUTTON_LAST = BUTTON || BOOT0_SENSE;
 
 		// hv state machine
-		if (hv_active && !PRECHG_SSR) {
+		if (hv_active && hv_activated_by_cdc && !usb_interface_status.flags.cdc_active) { // CDC activated HV then abandoned (once)
+			hv_active = 0;
+		}
+		if (hv_active && !PRECHG_SSR) { // HV just requested (once)
 			precharge_time_start = HAL_GetTick();
 		}
-		PRECHG_SSR = hv_active;
+		PRECHG_SSR = hv_active; // precharge SSR always matches HV state
 		if (hv_active) {
 			if (v_sense_hv > v_sense_hv_in * (1 - TH_PRECHG_VDROP) && v_sense_hv < v_sense_hv_in * (1 + TH_PRECHG_VDROP)) {
+				// output within precharge thresholds (repeatedly)
 				precharge_complete = 1;
 			}
-			if (precharge_complete) {
+			if (precharge_complete) { // last precharge was successful (repeatedly)
+				if (!HV_RELAY) { // precharge just completed (once)
+					if (hv_activated_by_cdc) { // tell CDC that its "arm" command was successful (once)
+						SerialTerminal_ReplyOk("arm");
+					}
+				}
 				HV_RELAY = 1;
-			} else if (HAL_GetTick() - precharge_time_start > TH_PRECHG_TIMEOUT) {
+			} else if (HAL_GetTick() - precharge_time_start > TH_PRECHG_TIMEOUT) { // precharge just failed (once)
 				power_system_faults.flags.precharge_fault = 1;
-			}
+				if (hv_activated_by_cdc) { // tell CDC that its "arm" command failed (once)
+					SerialTerminal_ReplyError("arm : precharge failed");
+				}
+			} // otherwise, we are still precharging
 		} else {
 			HV_RELAY = 0;
 			PRECHG_SSR = 0;
 			precharge_complete = 0;
+			hv_activated_by_cdc = 0; // reset the flag when HV is deactivated
 		}
 
 		// clear all setpoints if the HV relay is off
@@ -944,8 +959,7 @@ void Error_Handler(void)
 	}
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

@@ -13,14 +13,11 @@
 #include <stdbool.h>
 #include "can.h"
 
+#include "tile_data.h"
+
 MT2_Slave_Data tile_data[MAX_TILES];
 
 uint32_t tile_last_seen[MAX_TILES];
-
-typedef struct {
-	uint8_t x;
-	uint8_t y;
-} TileData_Coordinates;
 
 TileData_Coordinates tile_coordinates[MAX_TILES];
 
@@ -302,6 +299,9 @@ int TileData_IterativeSendSetpoints(void) {
 	uint16_t setpoint = coil_setpoints[iter_setpoint_tile_id][iter_setpoint_coil_index];
 	uint8_t addr = iter_setpoint_tile_id;
 	uint8_t message[3];
+	if (setpoint > 3000) {
+		setpoint = 0;
+	}
 	message[0] = COIL_SETPOINT_START_ADDR + iter_setpoint_coil_index; // register address
 	memcpy(&message[1], &setpoint, sizeof(setpoint)); // setpoint value
 	// Send the message

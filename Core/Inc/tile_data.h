@@ -16,7 +16,13 @@
 
 #define ALIVE_TIMEOUT 500 // ms
 
+typedef struct {
+	uint8_t x;
+	uint8_t y;
+} TileData_Coordinates;
+
 extern MT2_Slave_Data tile_data[MAX_TILES];
+extern TileData_Coordinates tile_coordinates[MAX_TILES];
 extern uint16_t coil_setpoints[MAX_TILES][9];
 extern uint32_t tile_last_seen[MAX_TILES];
 

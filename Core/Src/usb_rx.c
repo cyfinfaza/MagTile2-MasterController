@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "tile_data.h"
+#include "serial_terminal.h"
 
 #define MESSAGE_MAX_LEN 8  // Max COBS-decoded message length (adjust as needed)
 
@@ -70,6 +71,29 @@ void tud_vendor_rx_cb(uint8_t itf, uint8_t const *buffer, uint16_t bufsize) {
 				message_buf[message_len++] = byte;
 			} else {
 				message_len = 0;
+			}
+		}
+	}
+}
+
+char cdc_message[MAX_CDC_MSG_LEN];
+unsigned int cdc_message_len = 0;
+void tud_cdc_rx_cb(uint8_t itf) {
+    uint32_t bytes_available;
+	while (bytes_available = tud_cdc_available()) {
+		unsigned int count = tud_cdc_read((uint8_t *)cdc_message, sizeof(cdc_message) - 1);
+		if (count > 0) {
+			for (unsigned int i = 0; i < count; i++) {
+				char c = cdc_message[i];
+				if ((c == '\r' || c == '\n') && cdc_message_len > 0) {
+					cdc_message[cdc_message_len++] = '\0'; // Null-terminate the string
+					SerialTerminal_HandleCommand(cdc_message);
+					cdc_message_len = 0; // Reset for next command
+				} else if (c == '\0' || cdc_message_len >= sizeof(cdc_message) - 1) {
+					continue;
+				} else {
+					cdc_message[cdc_message_len++] = c;
+				}
 			}
 		}
 	}

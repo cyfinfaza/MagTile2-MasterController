@@ -8,6 +8,9 @@
 #ifndef INC_MASTER_REG_XMACRO_H_
 #define INC_MASTER_REG_XMACRO_H_
 
+#include <stdint.h>
+#include "mt2_types.h"
+
 #define MASTER_REG_XMACRO \
 X(0x10, power_switch_status, READONLY, MT2_Master_PowerSwitchStatus) \
 X(0x11, power_system_faults, READONLY, MT2_Master_PowerSystemFaults) \
