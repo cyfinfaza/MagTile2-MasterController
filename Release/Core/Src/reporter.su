@@ -1,0 +1,3 @@
+../Core/Src/reporter.c:25:12:Reporter_EncodeMessage	48	static
+../Core/Src/reporter.c:47:6:Reporter_IterativeReportAllTiles	72	static
+../Core/Src/reporter.c:78:6:Reporter_IterativeReportMaster	48	static

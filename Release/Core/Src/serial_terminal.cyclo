@@ -1,0 +1,4 @@
+../Core/Src/serial_terminal.c:25:6:SerialTerminal_ReplyOk	1
+../Core/Src/serial_terminal.c:32:6:SerialTerminal_ReplyOkNoMsg	1
+../Core/Src/serial_terminal.c:37:6:SerialTerminal_ReplyError	1
+../Core/Src/serial_terminal.c:60:6:SerialTerminal_HandleCommand	29

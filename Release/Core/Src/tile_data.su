@@ -1,0 +1,7 @@
+../Core/Src/tile_data.c:31:5:TileData_Write	0	static
+../Core/Src/tile_data.c:49:5:TileData_Read	8	static
+../Core/Src/tile_data.c:67:6:TileData_JustHeardFrom	8	static
+../Core/Src/tile_data.c:73:6:TileData_MarkInactiveTiles	24	static
+../Core/Src/tile_data.c:96:6:TileData_ComputeCoordinates	80	static,ignoring_inline_asm
+../Core/Src/tile_data.c:223:5:TileData_AssignSetpoint	20	static
+../Core/Src/tile_data.c:260:5:TileData_IterativeSendSetpoints	32	static

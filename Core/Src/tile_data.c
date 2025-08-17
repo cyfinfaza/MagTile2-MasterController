@@ -246,7 +246,7 @@ int TileData_AssignSetpoint(uint8_t x, uint8_t y, uint16_t setpoint) {
 	return -1;
 }
 
-#define ITER_SETPOINT_INTERVAL 100 // ms
+#define ITER_SETPOINT_INTERVAL 15 // ms
 #define ITER_GLOBAL_INTERVAL 50 // ms
 
 uint8_t iter_setpoint_tile_id = 1;
@@ -299,9 +299,9 @@ int TileData_IterativeSendSetpoints(void) {
 	uint16_t setpoint = coil_setpoints[iter_setpoint_tile_id][iter_setpoint_coil_index];
 	uint8_t addr = iter_setpoint_tile_id;
 	uint8_t message[3];
-	if (setpoint > 3000) {
-		setpoint = 0;
-	}
+//	if (setpoint > 3000) {
+//		setpoint = 0;
+//	}
 	message[0] = COIL_SETPOINT_START_ADDR + iter_setpoint_coil_index; // register address
 	memcpy(&message[1], &setpoint, sizeof(setpoint)); // setpoint value
 	// Send the message

@@ -1,0 +1,3 @@
+../Core/Src/registry.c:14:9:Registry_Read	4
+../Core/Src/registry.c:22:9:Registry_Write	5
+../Core/Src/registry.c:31:10:Registry_GetTotal	1

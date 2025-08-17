@@ -261,8 +261,12 @@ int main(void)
 		if (!OC_SENSE_HV) power_system_faults.flags.oc_hv = 1;
 
 		// button logic
-		if ((BUTTON || BOOT0_SENSE) && !BUTTON_LAST && !power_system_faults.byte) {
-			hv_active = !hv_active;
+		if ((BUTTON || BOOT0_SENSE) && !BUTTON_LAST) {
+			if (power_system_faults.byte) { // if there are faults, button clears them
+				clear_faults_requested = 1;
+			} else {
+				hv_active = !hv_active;
+			}
 		}
 		BUTTON_LAST = BUTTON || BOOT0_SENSE;
 

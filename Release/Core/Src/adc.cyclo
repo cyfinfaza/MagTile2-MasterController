@@ -1,0 +1,4 @@
+../Core/Src/adc.c:38:6:ADC_Init	1
+../Core/Src/adc.c:43:6:ADC_ProcessBuffer	2
+../Core/Src/adc.c:65:6:HAL_ADC_HalfConvCpltCallback	2
+../Core/Src/adc.c:71:6:HAL_ADC_ConvCpltCallback	2

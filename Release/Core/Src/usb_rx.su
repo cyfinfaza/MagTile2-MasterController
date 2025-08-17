@@ -1,0 +1,3 @@
+../Core/Src/usb_rx.c:26:6:USB_ProcessMessage	32	static
+../Core/Src/usb_rx.c:59:6:tud_vendor_rx_cb	24	static
+../Core/Src/usb_rx.c:81:6:tud_cdc_rx_cb	32	static
