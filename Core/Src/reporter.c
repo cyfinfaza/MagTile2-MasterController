@@ -14,7 +14,7 @@
 #include "tile_reg_xmacro.h"
 #include "registry.h"
 
-#define TILE_REGISTRY_SIZE 128
+#define TILE_REGISTRY_SIZE 255
 #define MAX_MSG_SIZE 16
 
 uint8_t iter_tile_addr = 1;

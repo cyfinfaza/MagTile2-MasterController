@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "can.h"
+#include "adc.h"
 
 #include "tile_data.h"
 
@@ -26,6 +27,7 @@ uint16_t coil_setpoints[MAX_TILES][9];
 
 #define COIL_SETPOINT_START_ADDR 0x10
 #define TILE_GLOBAL_STATE_REG 0x06
+#define TILE_MASTER_V_SENSE_HV_REG 0x0B
 #define SETPOINT_MESSAGE_PRIORITY 1
 
 int TileData_Write(uint8_t addr, uint8_t reg, void *data, uint16_t size) {
@@ -259,15 +261,18 @@ extern MT2_Global_State global_state; // global state to send
 
 int TileData_IterativeSendSetpoints(void) {
 	if (HAL_GetTick() - iter_global_last > ITER_GLOBAL_INTERVAL) {
-		uint8_t message[2];
+		uint8_t message[8];
 		message[0] = TILE_GLOBAL_STATE_REG; // register address
         memcpy(&message[1], &global_state, sizeof(global_state));
-        HAL_StatusTypeDef result = CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | 0, message, sizeof(message));
+        HAL_StatusTypeDef result = CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | 0, message, sizeof(global_state)+1);
         if (result != HAL_OK) {
         	return -2; // Send failed
         } else if (global_state.flags.global_fault_clear) { // if we successfully sent a clear flag
         	global_state.flags.global_fault_clear = 0;
         }
+        message[0] = TILE_MASTER_V_SENSE_HV_REG; // register address
+        memcpy(&message[1], &v_sense_hv, sizeof(v_sense_hv));
+        result = CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | 0, message, sizeof(v_sense_hv)+1);
 		iter_global_last = HAL_GetTick();
 	}
 	if (iter_setpoint_reached_end) {

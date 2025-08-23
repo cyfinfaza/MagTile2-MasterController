@@ -55,7 +55,8 @@ void ADC_ProcessBuffer(uint16_t* buffer) {
 	v_sense_hv = V_SENSE_HV / 65535.0f * 3.0 * (53.0f / 2.0f);
 	v_sense_12 = V_SENSE_12 / 65535.0f * 3.0 * 11.0f;
 	v_sense_5 = V_SENSE_5 / 65535.0f * 3.0 * 2.0f;
-	i_sense_hv = (I_SENSE_HV / 65535.0f * 3.0 - 1.5) / 0.088f + (HV_RELAY ? 0.6f : 0.0f);
+	i_sense_hv = (I_SENSE_HV / 65535.0f * 3.0 - 1.5) / 0.11 - (HV_RELAY ? 6.5f : 7.3f);
+//	i_sense_hv = (I_SENSE_HV / 65535.0f * 3.0 - 1.5) / 0.088f + (HV_RELAY ? 0.6f : 0.0f);
 	i_sense_12 = I_SENSE_12 / 65535.0f * 3.0 ;
 	i_sense_5 = I_SENSE_5 / 65535.0f * 3.0 / 0.12f;
 	v_sense_hv_in = V_SENSE_HV_IN / 65535.0f * 3.0 * (53.0f / 2.0f);
