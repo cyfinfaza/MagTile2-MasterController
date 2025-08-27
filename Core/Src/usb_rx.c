@@ -74,6 +74,7 @@ void tud_vendor_rx_cb(uint8_t itf, uint8_t const *buffer, uint16_t bufsize) {
 			}
 		}
 	}
+	tud_vendor_read_flush();
 }
 
 char cdc_message[MAX_CDC_MSG_LEN];

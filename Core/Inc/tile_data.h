@@ -10,7 +10,7 @@
 
 #include "mt2_types.h"
 
-#define MAX_TILES 10
+#define MAX_TILES 50
 
 #define TILE_MAP_SENTINEL 0xFF // must be larger than MAX_TILES
 
