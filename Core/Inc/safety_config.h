@@ -25,7 +25,7 @@
 
 // Precharge
 #define TH_PRECHG_VDROP 0.05f // *V_SENSE_HV_IN - Max voltage drop across precharge resistor relative to input voltage
-#define TH_PRECHG_TIMEOUT 1000 // ms - Max time allowed for precharging
+#define TH_PRECHG_TIMEOUT 200 // ms - Max time allowed for precharging
 
 // Temperature
 #define TH_OVERTEMP_MCU 50.0f // deg C - Max temperature threshold
