@@ -12,13 +12,13 @@
 
 #define MAX_TILES 50
 
-#define TILE_MAP_SENTINEL 0xFF // must be larger than MAX_TILES
+#define TILE_MAP_SENTINEL MAX_TILES+1 // must be larger than MAX_TILES
 
 #define ALIVE_TIMEOUT 500 // ms
 
 typedef struct {
-	uint8_t x;
-	uint8_t y;
+	int8_t x;
+	int8_t y;
 } TileData_Coordinates;
 
 extern MT2_Slave_Data tile_data[MAX_TILES];

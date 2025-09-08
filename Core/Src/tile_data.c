@@ -142,8 +142,8 @@ void TileData_ComputeCoordinates(void) {
 		int8_t y = dfs_stack_y[top];
 
 		// Record in tmp buffer
-		tmp_coords[id].x = (uint8_t) x;
-		tmp_coords[id].y = (uint8_t) y;
+		tmp_coords[id].x = x;
+		tmp_coords[id].y = y;
 
 		// Update bounds
 		if (first) {
@@ -202,15 +202,11 @@ void TileData_ComputeCoordinates(void) {
 	int8_t shiftX = -minX;
 	int8_t shiftY = -minY;
 	for (uint8_t i = 0; i < MAX_TILES; i++) {
-		if (tmp_coords[i].x != 0xFF) {
-			int8_t rx = (int8_t) tmp_coords[i].x;
-			int8_t ry = (int8_t) tmp_coords[i].y;
-			uint8_t fx = (uint8_t) (rx + shiftX);
-			uint8_t fy = (uint8_t) (ry + shiftY);
-			tmp_coords[i].x = fx;
-			tmp_coords[i].y = fy;
-			if ((uint8_t) (fx + 1) > tmp_map_width) tmp_map_width = fx + 1;
-			if ((uint8_t) (fy + 1) > tmp_map_height) tmp_map_height = fy + 1;
+		if (tmp_coords[i].x != TILE_MAP_SENTINEL) {
+			tmp_coords[i].x += shiftX;
+			tmp_coords[i].y += shiftY;
+			if (tmp_coords[i].x + 1 > tmp_map_width) tmp_map_width = tmp_coords[i].x + 1;
+			if (tmp_coords[i].y + 1 > tmp_map_height) tmp_map_height = tmp_coords[i].y + 1;
 		}
 	}
 

@@ -140,9 +140,15 @@ void SerialTerminal_HandleCommand(char *str) {
 		int row;
 		int col;
 		int power;
-		if (sscanf(command_args, "%d %d %d", &row, &col, &power) != 3 ||
-		    row >= tile_map_height*3 || col >= tile_map_width*3) {
+		if (sscanf(command_args, "%d %d %d", &row, &col, &power) != 3) {
 			SerialTerminal_ReplyError("Invalid arguments");
+			return;
+		}
+		if (row >= tile_map_height*3 || col >= tile_map_width*3) {
+			// say "Coordinate out of bounds; map dimensions are <width> x <height>"
+			char buf[64];
+			sprintf(buf, "Coordinate out of bounds; map dimensions are %d x %d", tile_map_width*3, tile_map_height*3);
+			SerialTerminal_ReplyError(buf);
 			return;
 		}
 		if (TileData_AssignSetpoint(col, row, power) == 0) {
