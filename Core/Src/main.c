@@ -383,6 +383,9 @@ int main(void)
 			TileData_ComputeCoordinates();
 		}
 
+		// Handle CAN failure
+		CAN_KeepAlive();
+
 //		I2C_ReadAllTiles_StatusOnly();
 //		I2C_IterativeReadAllTiles();
 //		I2C_ReadTileReg(0x01, 0x0A, &mt2_slave_data[0x01].v_sense_hv, 4);

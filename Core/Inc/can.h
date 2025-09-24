@@ -12,5 +12,6 @@
 
 void CAN_Init(FDCAN_HandleTypeDef* can_selection);
 HAL_StatusTypeDef CAN_SendMessage(uint32_t id, uint8_t* data, uint8_t len);
+void CAN_KeepAlive();
 
 #endif /* INC_CAN_H_ */
