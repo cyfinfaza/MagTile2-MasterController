@@ -83,6 +83,8 @@ MT2_Master_PowerSystemFaults power_system_faults;
 MT2_Master_UsbInterfaceStatus usb_interface_status;
 MT2_Global_State global_state;
 
+uint8_t lights_activated = 0;
+
 uint8_t clear_faults_requested = 0;
 
 // HV state machine
@@ -261,11 +263,15 @@ int main(void)
 		if (!OC_SENSE_HV) power_system_faults.flags.oc_hv = 1;
 
 		// button logic
-		if ((BUTTON || BOOT0_SENSE) && !BUTTON_LAST) {
-			if (power_system_faults.byte) { // if there are faults, button clears them
-				clear_faults_requested = 1;
+		if ((BUTTON || BOOT0_SENSE) && !BUTTON_LAST) { // on button push
+			if (!lights_activated) {
+				lights_activated = 1;
 			} else {
-				hv_active = !hv_active;
+				if (power_system_faults.byte) { // if there are faults, button clears them
+					clear_faults_requested = 1;
+				} else {
+					hv_active = !hv_active;
+				}
 			}
 		}
 		BUTTON_LAST = BUTTON || BOOT0_SENSE;
@@ -338,30 +344,36 @@ int main(void)
 
 		global_state.flags.global_arm = HV_RELAY;
 
-		// set LED
-		if (HV_RELAY) {
-			set_rgb(0, 0, 1); // Blue: Relay on (armed)
-		} else if (hv_active && !precharge_complete) {
-			set_rgb(0, 1, 1); // Cyan: Precharging
-		} else if (power_switch_status.flags.hv_ready) {
-			set_rgb(0, 1, 0); // Green: Ready to arm
-		} else if (power_switch_status.flags.hv_shutdown_from_fault) {
-			set_rgb(1, 0, 0); // Red: Fault
-		} else {
-			MT2_Master_PowerSystemFaults red_faults = power_system_faults;
-			// clear fault flags that are not critical
-			red_faults.flags.uv_5v = 0;
-			red_faults.flags.uv_12v = 0;
-			red_faults.flags.efuse_12v_fault = 0;
-			if (red_faults.byte) {
+		global_state.flags.global_led_disable = !lights_activated;
+
+		if (lights_activated) {
+			// set LED
+			if (HV_RELAY) {
+				set_rgb(0, 0, 1); // Blue: Relay on (armed)
+			} else if (hv_active && !precharge_complete) {
+				set_rgb(0, 1, 1); // Cyan: Precharging
+			} else if (power_switch_status.flags.hv_ready) {
+				set_rgb(0, 1, 0); // Green: Ready to arm
+			} else if (power_switch_status.flags.hv_shutdown_from_fault) {
 				set_rgb(1, 0, 0); // Red: Fault
 			} else {
-				if (power_system_faults.flags.uv_5v && power_system_faults.flags.uv_12v) {
-					set_rgb(1, 1, 0); // Yellow: Both 5v and 12v missing, assume cable unplugged
+				MT2_Master_PowerSystemFaults red_faults = power_system_faults;
+				// clear fault flags that are not critical
+				red_faults.flags.uv_5v = 0;
+				red_faults.flags.uv_12v = 0;
+				red_faults.flags.efuse_12v_fault = 0;
+				if (red_faults.byte) {
+					set_rgb(1, 0, 0); // Red: Fault
 				} else {
-					set_rgb(1, 0, 0); // Red: Only one is missing, bigger problem likely
+					if (power_system_faults.flags.uv_5v && power_system_faults.flags.uv_12v) {
+						set_rgb(1, 1, 0); // Yellow: Both 5v and 12v missing, assume cable unplugged
+					} else {
+						set_rgb(1, 0, 0); // Red: Only one is missing, bigger problem likely
+					}
 				}
 			}
+		} else {
+			set_rgb(0, 0, 0);
 		}
 
 		// Write digital outputs
