@@ -51,6 +51,9 @@ void USB_ProcessMessage(uint8_t *buffer, uint16_t bufsize) {
 						coil_setpoints[tile_id][coil_index] = setpoint;
 					}
 				}
+				if (reg == 0x82 && data_size == 1) {
+					TileData_IdentifyTile(cobs_decoded_message[2]);
+				}
 			}
 		}
 	}

@@ -28,6 +28,6 @@
 #define TH_PRECHG_TIMEOUT 400 // ms - Max time allowed for precharging
 
 // Temperature
-#define TH_OVERTEMP_MCU 50.0f // deg C - Max temperature threshold
+#define TH_OVERTEMP_MCU 100.0f // deg C - Max temperature threshold
 
 #endif /* INC_SAFETY_CONFIG_H_ */

@@ -28,6 +28,7 @@ uint16_t coil_setpoints[MAX_TILES][9];
 #define COIL_SETPOINT_START_ADDR 0x10
 #define TILE_GLOBAL_STATE_REG 0x06
 #define TILE_MASTER_V_SENSE_HV_REG 0x0B
+#define TILE_SETTINGS_REG 0x07
 #define SETPOINT_MESSAGE_PRIORITY 1
 
 int TileData_Write(uint8_t addr, uint8_t reg, void *data, uint16_t size) {
@@ -76,6 +77,28 @@ void TileData_MarkInactiveTiles() {
 	for (uint8_t i = 0; i < MAX_TILES; i++) {
 		if (tile_last_seen[i] + ALIVE_TIMEOUT < HAL_GetTick()) {
 			tile_data[i].slave_status.flags.alive = 0;
+		}
+	}
+}
+
+// Turn on ID light for specified tile, off for all others
+void TileData_IdentifyTile(uint8_t addr) {
+	if (addr >= MAX_TILES) {
+		return;
+	}
+	// for each alive tile, send its current settings value with ID flag set appropriately
+	for (uint8_t i = 1; i < MAX_TILES; i++) {
+		if (tile_data[i].slave_status.flags.alive) {
+			MT2_Slave_Settings settings = tile_data[i].slave_settings;
+			if (i == addr) {
+				settings.flags.identify = 1;
+			} else {
+				settings.flags.identify = 0;
+			}
+			uint8_t data[sizeof(MT2_Slave_Settings) + 1];
+			data[0] = TILE_SETTINGS_REG;
+			memcpy(&data[1], &settings, sizeof(MT2_Slave_Settings));
+			CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | i, data, sizeof(data));
 		}
 	}
 }
