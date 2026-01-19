@@ -16,6 +16,7 @@ uint16_t ADC_DMA_BUFFER[ADC_CHANNELS*2];
 // raw readings
 uint16_t V_SENSE_HV = 0;
 uint16_t I_SENSE_HV = 0;
+uint16_t I_SENSE_HV_OFFSET = 0;
 uint16_t V_SENSE_12 = 0;
 uint16_t I_SENSE_12 = 0;
 uint16_t V_SENSE_5 = 0;
@@ -28,6 +29,7 @@ float v_sense_hv = 0;
 float v_sense_12 = 0;
 float v_sense_5 = 0;
 float i_sense_hv = 0;
+float i_sense_hv_offset = 0;
 float i_sense_12 = 0;
 float i_sense_5 = 0;
 float v_sense_hv_in = 0;
@@ -55,7 +57,11 @@ void ADC_ProcessBuffer(uint16_t* buffer) {
 	v_sense_hv = V_SENSE_HV / 65535.0f * 3.0 * (53.0f / 2.0f);
 	v_sense_12 = V_SENSE_12 / 65535.0f * 3.0 * 11.0f;
 	v_sense_5 = V_SENSE_5 / 65535.0f * 3.0 * 2.0f;
-	i_sense_hv = (I_SENSE_HV / 65535.0f * 3.0 - 1.5) / 0.11 - (HV_RELAY ? 6.5f : 7.3f);
+//	if (!HV_RELAY) I_SENSE_HV_OFFSET = I_SENSE_HV;
+	i_sense_hv = (I_SENSE_HV / 65535.0f * 3.0) / 0.11f * 0.55f / 0.8f;
+	if (!HV_RELAY) i_sense_hv_offset = i_sense_hv;
+	i_sense_hv -= i_sense_hv_offset;
+//	i_sense_hv = (I_SENSE_HV / 65535.0f * 3.0 - 1.5) / 0.11 - (HV_RELAY ? 6.5f : 7.3f);
 //	i_sense_hv = (I_SENSE_HV / 65535.0f * 3.0 - 1.5) / 0.088f + (HV_RELAY ? 0.6f : 0.0f);
 	i_sense_12 = I_SENSE_12 / 65535.0f * 3.0 ;
 	i_sense_5 = I_SENSE_5 / 65535.0f * 3.0 / 0.12f;

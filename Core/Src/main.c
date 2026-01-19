@@ -201,6 +201,7 @@ int main(void)
 
 	UART_Init(&huart1);
 
+	HAL_DTS_Init(&hdts);
 	HAL_DTS_Start(&hdts);
 
   /* USER CODE END 2 */
@@ -392,7 +393,7 @@ int main(void)
 		if (HAL_GetTick() - inactivity_interval_start > 100) {
 			inactivity_interval_start = HAL_GetTick();
 			TileData_MarkInactiveTiles();
-			TileData_ComputeCoordinates();
+			if (!HV_RELAY) TileData_ComputeCoordinates();
 		}
 
 		// Handle CAN failure
@@ -615,8 +616,8 @@ static void MX_DTS_Init(void)
   hdts.Init.QuickMeasure = DTS_QUICKMEAS_DISABLE;
   hdts.Init.RefClock = DTS_REFCLKSEL_PCLK;
   hdts.Init.TriggerInput = DTS_TRIGGER_HW_NONE;
-  hdts.Init.SamplingTime = DTS_SMP_TIME_8_CYCLE;
-  hdts.Init.Divider = 0;
+  hdts.Init.SamplingTime = DTS_SMP_TIME_15_CYCLE;
+  hdts.Init.Divider = 100;
   hdts.Init.HighThreshold = 0x0;
   hdts.Init.LowThreshold = 0x0;
   if (HAL_DTS_Init(&hdts) != HAL_OK)
