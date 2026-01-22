@@ -393,7 +393,7 @@ int main(void)
 		if (HAL_GetTick() - inactivity_interval_start > 100) {
 			inactivity_interval_start = HAL_GetTick();
 			TileData_MarkInactiveTiles();
-			if (!HV_RELAY) TileData_ComputeCoordinates();
+			if (!hv_active) TileData_ComputeCoordinates();
 		}
 
 		// Handle CAN failure
@@ -656,7 +656,7 @@ static void MX_FDCAN1_Init(void)
   hfdcan1.Init.NominalSyncJumpWidth = 4;
   hfdcan1.Init.NominalTimeSeg1 = 13;
   hfdcan1.Init.NominalTimeSeg2 = 6;
-  hfdcan1.Init.DataPrescaler = 3;
+  hfdcan1.Init.DataPrescaler = 6;
   hfdcan1.Init.DataSyncJumpWidth = 4;
   hfdcan1.Init.DataTimeSeg1 = 16;
   hfdcan1.Init.DataTimeSeg2 = 8;

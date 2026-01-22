@@ -253,7 +253,7 @@ int TileData_AssignSetpoint(uint8_t x, uint8_t y, uint16_t setpoint) {
 	uint8_t localY = y % 3;
 	// Quick bounds check
 	if (tileGridX >= tile_map_width || tileGridY >= tile_map_height) {
-		return -1;
+		return -2;
 	}
 	// Find matching tile
 	for (uint8_t id = 1; id < MAX_TILES; id++) {
@@ -264,7 +264,7 @@ int TileData_AssignSetpoint(uint8_t x, uint8_t y, uint16_t setpoint) {
 			return 0;
 		}
 	}
-	return -1;
+	return -3;
 }
 
 #define ITER_SETPOINT_INTERVAL 15 // ms

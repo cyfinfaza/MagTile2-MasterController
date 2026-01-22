@@ -151,10 +151,13 @@ void SerialTerminal_HandleCommand(char *str) {
 			SerialTerminal_ReplyError(buf);
 			return;
 		}
-		if (TileData_AssignSetpoint(col, row, power) == 0) {
+		int result_code = TileData_AssignSetpoint(col, row, power);
+		if (result_code == 0) {
 			SerialTerminal_ReplyOkNoMsg();
 		} else {
-			SerialTerminal_ReplyError("Failed to set power");
+			char buf[64];
+			sprintf(buf, "Failed to set power, error code %d", result_code);
+			SerialTerminal_ReplyError(buf);
 		}
 		return;
 	}
