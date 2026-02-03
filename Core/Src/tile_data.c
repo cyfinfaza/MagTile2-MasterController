@@ -241,6 +241,8 @@ void TileData_ComputeCoordinates(void) {
 	__enable_irq();
 }
 
+char setpoint_resend_request = 0;
+
 int TileData_AssignSetpoint(uint8_t x, uint8_t y, uint16_t setpoint) {
 	// No map available?
 	if (tile_map_width == 0 || tile_map_height == 0) {
@@ -261,18 +263,22 @@ int TileData_AssignSetpoint(uint8_t x, uint8_t y, uint16_t setpoint) {
 			uint8_t coilIndex = localY * 3 + localX;
 			// Write the setpoint
 			coil_setpoints[id][coilIndex] = setpoint;
+			setpoint_resend_request = 1; // flag to resend setpoints
 			return 0;
 		}
 	}
 	return -3;
 }
 
-#define ITER_SETPOINT_INTERVAL 15 // ms
+const uint8_t CLEAR_PENDING_COMMAND = 0x1A;
+const uint8_t APPLY_PENDING_COMMAND = 0x1B;
+
+#define ITER_SETPOINT_INTERVAL 200 // ms
 #define ITER_GLOBAL_INTERVAL 50 // ms
 
 uint8_t iter_setpoint_tile_id = 1;
 uint8_t iter_setpoint_coil_index = 0;
-uint8_t iter_setpoint_reached_end = 0; // flag to indicate if we reached the end of the setpoints
+uint8_t iter_setpoint_reached_end = 1; // flag to indicate if we reached the end of the setpoints
 uint32_t iter_setpoint_last_started = 0; // last time we started sending setpoints
 uint32_t iter_global_last = 0; // last time we started the global iteration
 
@@ -295,21 +301,35 @@ int TileData_IterativeSendSetpoints(void) {
 		iter_global_last = HAL_GetTick();
 	}
 	if (iter_setpoint_reached_end) {
-		if (HAL_GetTick() - iter_setpoint_last_started < ITER_SETPOINT_INTERVAL) {
-			return 1; // wait for next interval
-		} else {
+		if (HAL_GetTick() - iter_setpoint_last_started > ITER_SETPOINT_INTERVAL || setpoint_resend_request) { // restart condition
+			// send CLEAR PENDING command to all tiles
+			uint8_t clear_message[1];
+			clear_message[0] = CLEAR_PENDING_COMMAND;
+			HAL_StatusTypeDef result = CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | 0, clear_message, sizeof(clear_message));
+			if (result != HAL_OK) {
+				return -2; // Send failed
+			}
 			iter_setpoint_last_started = HAL_GetTick();
 			iter_setpoint_reached_end = 0; // reset the flag
+			setpoint_resend_request = 0;
 		}
+		return 1; // if not restart
 	}
 	for (int i = 0; i < MAX_TILES; i++) {
-		if (iter_setpoint_coil_index >= 9) {
+		if (iter_setpoint_coil_index >= 9) { //
 			iter_setpoint_coil_index = 0;
 			iter_setpoint_tile_id++;
 		}
 		if (iter_setpoint_tile_id >= MAX_TILES) {
 			iter_setpoint_tile_id = 1; // skip addr 0
 			iter_setpoint_reached_end = 1; // reached the end of the setpoints
+			// send APPLY PENDING command to all tiles
+			uint8_t apply_message[1];
+			apply_message[0] = APPLY_PENDING_COMMAND;
+			HAL_StatusTypeDef result = CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | 0, apply_message, sizeof(apply_message));
+			if (result != HAL_OK) {
+				return -2; // Send failed
+			}
 			return 1; // No more setpoints to send
 		}
 		if (tile_data[iter_setpoint_tile_id].slave_status.flags.alive) {
@@ -320,20 +340,23 @@ int TileData_IterativeSendSetpoints(void) {
 	if (tile_data[iter_setpoint_tile_id].slave_status.flags.alive == 0) {
 		return -1; // No alive tiles
 	}
-	uint16_t setpoint = coil_setpoints[iter_setpoint_tile_id][iter_setpoint_coil_index];
-	uint8_t addr = iter_setpoint_tile_id;
-	uint8_t message[3];
-//	if (setpoint > 3000) {
-//		setpoint = 0;
-//	}
-	message[0] = COIL_SETPOINT_START_ADDR + iter_setpoint_coil_index; // register address
-	memcpy(&message[1], &setpoint, sizeof(setpoint)); // setpoint value
-	// Send the message
-	HAL_StatusTypeDef result = CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | addr, message, sizeof(message));
-	if (result != HAL_OK) {
-		return -2; // Send failed
+	while (iter_setpoint_coil_index < 9) { // if we reach the end of this tile, we have to wait until the next call
+		uint16_t setpoint = coil_setpoints[iter_setpoint_tile_id][iter_setpoint_coil_index];
+		if (setpoint == 0) { // skip if setpoint is zero to save bandwidth
+			iter_setpoint_coil_index++;
+			continue;
+		}
+		uint8_t addr = iter_setpoint_tile_id;
+		uint8_t message[3];
+		message[0] = COIL_SETPOINT_START_ADDR + iter_setpoint_coil_index; // register address
+		memcpy(&message[1], &setpoint, sizeof(setpoint)); // setpoint value
+		// Send the message
+		HAL_StatusTypeDef result = CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | addr, message, sizeof(message));
+		if (result != HAL_OK) {
+			return -2; // Send failed
+		}
+		// Increment coil index
+		iter_setpoint_coil_index++;
+		return 0; // only allow one setpoint to actually be sent per call for loop efficiency
 	}
-	// Increment coil index
-	iter_setpoint_coil_index++;
-	return 0;
 }

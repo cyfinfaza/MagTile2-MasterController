@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include "tile_data.h"
 #include "serial_terminal.h"
+#include "can.h"
 
 #define MESSAGE_MAX_LEN 8  // Max COBS-decoded message length (adjust as needed)
 
@@ -23,10 +24,15 @@ static uint8_t received_first_delimiter = 0;
 
 uint8_t cobs_decoded_message[MESSAGE_MAX_LEN];
 
+extern uint8_t hv_active;
+#define ENTER_BOOTLOADER_COMMAND 0xD0
+extern uint8_t lights_activated;
+#define TOGGLE_DEBUG_LED_COMMAND 0xD1
+
 void USB_ProcessMessage(uint8_t *buffer, uint16_t bufsize) {
 	// step 1: COBS decode the message
 	cobs_decode_result cobs_result = cobs_decode(cobs_decoded_message, MESSAGE_MAX_LEN, buffer, bufsize);
-	if (cobs_result.status != COBS_DECODE_OK || cobs_result.out_len < 3) {
+	if (cobs_result.status != COBS_DECODE_OK || cobs_result.out_len < 2) {
 		return;
 	}
 	uint8_t data_size = cobs_result.out_len - 2;
@@ -54,6 +60,16 @@ void USB_ProcessMessage(uint8_t *buffer, uint16_t bufsize) {
 				if (reg == 0x82 && data_size == 1) {
 					TileData_IdentifyTile(cobs_decoded_message[2]);
 				}
+			}
+			if (reg == ENTER_BOOTLOADER_COMMAND && data_size == 0) {
+				if (!hv_active) {
+					uint8_t message[1];
+					message[0] = ENTER_BOOTLOADER_COMMAND;
+					CAN_SendMessage(0, message, sizeof(message));
+				}
+			}
+			if (reg == TOGGLE_DEBUG_LED_COMMAND && data_size == 0) {
+				lights_activated = !lights_activated;
 			}
 		}
 	}

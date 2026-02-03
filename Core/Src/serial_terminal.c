@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "tusb.h"
+#include "can.h"
 #include "tile_data.h"
 
 #include "serial_terminal.h"
@@ -21,6 +22,8 @@ extern uint8_t hv_activated_by_cdc;
 
 extern uint8_t tile_map_width;
 extern uint8_t tile_map_height;
+
+#define ENTER_BOOTLOADER_COMMAND 0xD0
 
 void SerialTerminal_ReplyOk(char* msg) {
 	tud_cdc_write_str("ok : ");
@@ -61,7 +64,7 @@ void SerialTerminal_HandleCommand(char *str) {
 	char command_name[MAX_CDC_MSG_LEN];
 	char command_args[MAX_CDC_MSG_LEN];
 	// parse the command
-	int parsed = sscanf(str, "%s %[^\n]", command_name, command_args);
+	int parsed = sscanf(str, "%s %[^\r\n]", command_name, command_args);
 #define IF_COMMAND_IS(_cmd)  if (strcmp(command_name, _cmd) == 0)
 
 	// TODO: Ensure safety of non-atomic operations
@@ -179,6 +182,18 @@ void SerialTerminal_HandleCommand(char *str) {
 		memset(coil_setpoints, 0, sizeof(coil_setpoints));
 		SerialTerminal_ReplyOkNoMsg();
 		return;
+	}
+	IF_COMMAND_IS("enter_bootloader_all") {
+		if (hv_active) {
+			SerialTerminal_ReplyError("Disarm before entering bootloader");
+			return;
+		} else {
+			uint8_t message[1];
+			message[0] = ENTER_BOOTLOADER_COMMAND;
+			CAN_SendMessage(0, message, sizeof(message));
+			SerialTerminal_ReplyOkNoMsg();
+			return;
+		}
 	}
 
 	SerialTerminal_ReplyError("Unknown command");
