@@ -16,7 +16,7 @@
 // 12V Rail
 #define TH_OV_12 15.0f // V - 12V overvoltage threshold
 #define TH_UV_12 10.5f // V - 12V undervoltage threshold
-#define TH_OC_12 2.0f // A - 12V overcurrent threshold
+#define TH_OC_12 3.0f // A - 12V overcurrent threshold
 
 // HV Rail
 #define TH_OV_HV 52.0f // V - HV overvoltage threshold

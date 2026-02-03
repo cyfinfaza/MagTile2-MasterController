@@ -278,62 +278,100 @@ uint32_t iter_global_last = 0; // last time we started the global iteration
 
 extern MT2_Global_State global_state; // global state to send
 
+
+// Gemini wrote this
 int TileData_IterativeSendSetpoints(void) {
-	if (HAL_GetTick() - iter_global_last > ITER_GLOBAL_INTERVAL) {
-		uint8_t message[8];
-		message[0] = TILE_GLOBAL_STATE_REG; // register address
+    // 1. IN-PLACE FIX: Static cache to remember what we sent last time.
+    // Dimensions based on MAX_TILES and the fact that you check 'index >= 9'.
+    // Static variables are zero-initialized by default.
+    static uint16_t last_sent_setpoints[MAX_TILES][9];
+
+    if (HAL_GetTick() - iter_global_last > ITER_GLOBAL_INTERVAL) {
+        uint8_t message[8];
+        message[0] = TILE_GLOBAL_STATE_REG; // register address
         memcpy(&message[1], &global_state, sizeof(global_state));
         HAL_StatusTypeDef result = CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | 0, message, sizeof(global_state)+1);
         if (result != HAL_OK) {
-        	return -2; // Send failed
+            return -2; // Send failed
         } else if (global_state.flags.global_fault_clear) { // if we successfully sent a clear flag
-        	global_state.flags.global_fault_clear = 0;
+            global_state.flags.global_fault_clear = 0;
         }
         message[0] = TILE_MASTER_V_SENSE_HV_REG; // register address
         memcpy(&message[1], &v_sense_hv, sizeof(v_sense_hv));
         result = CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | 0, message, sizeof(v_sense_hv)+1);
-		iter_global_last = HAL_GetTick();
-	}
-	if (iter_setpoint_reached_end) {
-		if (HAL_GetTick() - iter_setpoint_last_started < ITER_SETPOINT_INTERVAL) {
-			return 1; // wait for next interval
-		} else {
-			iter_setpoint_last_started = HAL_GetTick();
-			iter_setpoint_reached_end = 0; // reset the flag
-		}
-	}
-	for (int i = 0; i < MAX_TILES; i++) {
-		if (iter_setpoint_coil_index >= 9) {
-			iter_setpoint_coil_index = 0;
-			iter_setpoint_tile_id++;
-		}
-		if (iter_setpoint_tile_id >= MAX_TILES) {
-			iter_setpoint_tile_id = 1; // skip addr 0
-			iter_setpoint_reached_end = 1; // reached the end of the setpoints
-			return 1; // No more setpoints to send
-		}
-		if (tile_data[iter_setpoint_tile_id].slave_status.flags.alive) {
-			break;
-		}
-		iter_setpoint_tile_id++;
-	}
-	if (tile_data[iter_setpoint_tile_id].slave_status.flags.alive == 0) {
-		return -1; // No alive tiles
-	}
-	uint16_t setpoint = coil_setpoints[iter_setpoint_tile_id][iter_setpoint_coil_index];
-	uint8_t addr = iter_setpoint_tile_id;
-	uint8_t message[3];
-//	if (setpoint > 3000) {
-//		setpoint = 0;
-//	}
-	message[0] = COIL_SETPOINT_START_ADDR + iter_setpoint_coil_index; // register address
-	memcpy(&message[1], &setpoint, sizeof(setpoint)); // setpoint value
-	// Send the message
-	HAL_StatusTypeDef result = CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | addr, message, sizeof(message));
-	if (result != HAL_OK) {
-		return -2; // Send failed
-	}
-	// Increment coil index
-	iter_setpoint_coil_index++;
-	return 0;
+        iter_global_last = HAL_GetTick();
+    }
+
+    if (iter_setpoint_reached_end) {
+        if (HAL_GetTick() - iter_setpoint_last_started < ITER_SETPOINT_INTERVAL) {
+            return 1; // wait for next interval
+        } else {
+            iter_setpoint_last_started = HAL_GetTick();
+            iter_setpoint_reached_end = 0; // reset the flag
+        }
+    }
+
+    // 2. IN-PLACE FIX: Loop until we find something to send or reach the end.
+    // This prevents returning 0 (success) without actually sending anything,
+    // which would require the caller to call this function hundreds of times just to skip unchanged values.
+    while (1) {
+        for (int i = 0; i < MAX_TILES; i++) {
+            if (iter_setpoint_coil_index >= 9) {
+                iter_setpoint_coil_index = 0;
+                iter_setpoint_tile_id++;
+            }
+            if (iter_setpoint_tile_id >= MAX_TILES) {
+                iter_setpoint_tile_id = 1; // skip addr 0
+                iter_setpoint_reached_end = 1; // reached the end of the setpoints
+                return 1; // No more setpoints to send
+            }
+            if (tile_data[iter_setpoint_tile_id].slave_status.flags.alive) {
+                break;
+            }
+            iter_setpoint_tile_id++;
+        }
+
+        if (tile_data[iter_setpoint_tile_id].slave_status.flags.alive == 0) {
+            return -1; // No alive tiles
+        }
+
+        uint16_t setpoint = coil_setpoints[iter_setpoint_tile_id][iter_setpoint_coil_index];
+
+        // 3. IN-PLACE FIX: Check if value changed
+        if (last_sent_setpoints[iter_setpoint_tile_id][iter_setpoint_coil_index] != setpoint) {
+
+            // -- Value Changed: Send Message --
+
+            uint8_t addr = iter_setpoint_tile_id;
+            uint8_t message[3];
+            // if (setpoint > 3000) {
+            //  setpoint = 0;
+            // }
+            message[0] = COIL_SETPOINT_START_ADDR + iter_setpoint_coil_index; // register address
+            memcpy(&message[1], &setpoint, sizeof(setpoint)); // setpoint value
+
+            // Send the message
+            HAL_StatusTypeDef result = CAN_SendMessage((SETPOINT_MESSAGE_PRIORITY << 8) | addr, message, sizeof(message));
+            if (result != HAL_OK) {
+                return -2; // Send failed
+            }
+
+            // Update the cache so we don't send this again next time
+            last_sent_setpoints[iter_setpoint_tile_id][iter_setpoint_coil_index] = setpoint;
+
+            // Increment coil index
+            iter_setpoint_coil_index++;
+
+            return 0; // We did work, return control
+        } else {
+            // -- Value Unchanged: Skip Send --
+
+            // Increment coil index
+            iter_setpoint_coil_index++;
+
+            // Continue the 'while(1)' loop to immediately check the next coil
+            // without exiting the function.
+            continue;
+        }
+    }
 }
